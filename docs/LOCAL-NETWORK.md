@@ -16,7 +16,7 @@ Live command guide (same content, HTML): after Compose is up, open
 | `spine` | library | YAML config, HikariCP, Redis (Lettuce), MiniMessage helpers |
 | `aegis-paper` / `aegis-velocity` / `aegis-common` | Paper + Velocity | Network bans, mutes, warnings, SQL audit, Redis sync |
 | `harbor` | Velocity | Priority queues and backend health routing |
-| `gatekeep` | Velocity | Connection rate limiting |
+| `gatekeep` | Velocity | Connection rate limiting by address |
 | `loom` | Paper | Cross-server inventory sync with transfer locks |
 | `spotlight` | Paper | Lag attribution by chunk cost |
 | `cull` | Paper | Per-chunk mob limits |
@@ -190,7 +190,8 @@ Needs MariaDB. Soft-depends on Vault if present.
 
 ### tether (Paper)
 
-Needs MariaDB. Discord features need `discord.token` (and channel id) in config.
+Needs MariaDB. Discord features need token/channel via Docker env
+(`TETHER_DISCORD_*` in `testbed/.env`, interpolated into tether `config.yml`).
 
 | Command / flow | Permission | Expected effect |
 | --- | --- | --- |
@@ -217,9 +218,9 @@ temporary chest and tells the player the grave coordinates.
 
 | Source | Contents |
 | --- | --- |
-| `testbed/.env` (from `.env.example`) | Ports, memory, MariaDB/RCON passwords, bot knobs, forwarding secret for Paper env |
+| `testbed/.env` (from `.env.example`) | Ports, memory, MariaDB/RCON passwords, bot knobs, forwarding secret, tether Discord secrets |
 | `testbed/velocity/forwarding.secret` | Velocity modern forwarding secret (file) |
-| `testbed/plugin-config/` | Docker JDBC/Redis/harbor/gatekeep overrides staged by `sync-plugins.sh` |
+| `testbed/plugin-config/` | Docker JDBC/Redis/harbor/gatekeep/tether overrides staged by `sync-plugins.sh` |
 | `testbed/mariadb/init/` | Creates `aegis` database on first MariaDB volume |
 | `testbed/config/paper-global.yml` | Copied into Paper `/data/config` (Velocity enabled); secret overridden by env |
 

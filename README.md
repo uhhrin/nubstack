@@ -14,7 +14,10 @@ Java 25. Versions are pinned in `gradle.properties` and verified in CI.
 
 ## Plugins
 
-Download jars from [Releases](../../releases) after tagging.
+Download jars from [Releases](../../releases) after tagging. Each plugin folder
+has a README with features, install, config, commands, and permissions.
+`aegis/` is the product docs umbrella for the `aegis-paper` / `aegis-velocity`
+jars (same monorepo, not a second repository).
 
 | Plugin | Platform | Status | Description |
 | --- | --- | --- | --- |
@@ -22,7 +25,7 @@ Download jars from [Releases](../../releases) after tagging.
 | [harbor](harbor/) | Velocity | mvp | Priority queues and backend health routing |
 | [loom](loom/) | Paper | mvp | Cross-server inventory sync with transfer locks |
 | [spotlight](spotlight/) | Paper | mvp | Lag attribution by chunk, entity, and hopper cost |
-| [gatekeep](gatekeep/) | Velocity | mvp | Connection throttling and reputation scoring |
+| [gatekeep](gatekeep/) | Velocity | mvp | Connection throttling by address |
 | [ledger](ledger/) | Paper | mvp | Vault-compatible economy with a transaction ledger |
 | [cull](cull/) | Paper | mvp | Per-chunk mob limits and cleanup |
 | [amber](amber/) | Paper | mvp | Async world snapshots with retention |
@@ -64,6 +67,7 @@ docker compose -f testbed/docker-compose.yml --profile minigame up -d
 
 - Join `localhost:25565`
 - Command guide: `http://localhost:8080`
+- What we have built so far: [docs/PROGRESS.md](docs/PROGRESS.md)
 - Full topology, env map, and commands: [docs/LOCAL-NETWORK.md](docs/LOCAL-NETWORK.md)
 - Shorter ops notes: [testbed/README.md](testbed/README.md)
 
