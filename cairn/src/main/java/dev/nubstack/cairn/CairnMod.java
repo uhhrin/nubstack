@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
@@ -18,6 +19,12 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Server-side death chests for vanilla clients.
+ *
+ * shortcut: graves are tracked only in the overworld tick path, upgrade when
+ * multi-world grave expiry is required.
+ */
 public final class CairnMod implements DedicatedServerModInitializer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("cairn");
@@ -30,7 +37,9 @@ public final class CairnMod implements DedicatedServerModInitializer {
             if (!(entity instanceof ServerPlayer player)) {
                 return;
             }
-            ServerLevel level = player.serverLevel();
+            if (!(player.level() instanceof ServerLevel level)) {
+                return;
+            }
             BlockPos pos = player.blockPosition();
             if (!level.getBlockState(pos).isAir()) {
                 pos = pos.above();
@@ -38,37 +47,27 @@ public final class CairnMod implements DedicatedServerModInitializer {
             level.setBlockAndUpdate(pos, Blocks.CHEST.defaultBlockState());
             if (level.getBlockEntity(pos) instanceof ChestBlockEntity chest) {
                 int slot = 0;
-                for (ItemStack stack : player.getInventory().items) {
+                Inventory inventory = player.getInventory();
+                for (int i = 0; i < inventory.getContainerSize(); i++) {
+                    ItemStack stack = inventory.getItem(i);
                     if (stack.isEmpty() || slot >= chest.getContainerSize()) {
                         continue;
                     }
                     chest.setItem(slot++, stack.copy());
                     stack.setCount(0);
                 }
-                for (ItemStack stack : player.getInventory().armor) {
-                    if (stack.isEmpty() || slot >= chest.getContainerSize()) {
-                        continue;
-                    }
-                    chest.setItem(slot++, stack.copy());
-                    stack.setCount(0);
-                }
-                for (ItemStack stack : player.getInventory().offhand) {
-                    if (stack.isEmpty() || slot >= chest.getContainerSize()) {
-                        continue;
-                    }
-                    chest.setItem(slot++, stack.copy());
-                    stack.setCount(0);
-                }
-                chest.setCustomName(Component.literal(player.getGameProfile().getName() + "'s grave"));
             }
             graves.put(pos.immutable(), EXPIRE_TICKS);
-            player.sendSystemMessage(Component.literal("Your grave was placed at " + pos.toShortString()));
+            String playerName = player.getGameProfile().name();
+            player.sendSystemMessage(Component.literal(
+                    "Your grave was placed at " + pos.toShortString() + " (" + playerName + ")"));
         });
 
-        ServerTickEvents.END_WORLD_TICK.register(world -> {
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
             if (graves.isEmpty()) {
                 return;
             }
+            ServerLevel world = server.overworld();
             Iterator<Map.Entry<BlockPos, Integer>> iterator = graves.entrySet().iterator();
             while (iterator.hasNext()) {
                 Map.Entry<BlockPos, Integer> entry = iterator.next();
@@ -83,7 +82,11 @@ public final class CairnMod implements DedicatedServerModInitializer {
                         ItemStack stack = chest.getItem(i);
                         if (!stack.isEmpty()) {
                             world.addFreshEntity(new ItemEntity(
-                                    world, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, stack));
+                                    world,
+                                    pos.getX() + 0.5,
+                                    pos.getY() + 0.5,
+                                    pos.getZ() + 0.5,
+                                    stack));
                         }
                     }
                 }

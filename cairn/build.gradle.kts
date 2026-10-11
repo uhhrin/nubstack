@@ -6,10 +6,28 @@ base {
     archivesName.set("cairn")
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(providers.gradleProperty("javaVersion").get().toInt()))
+    }
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+    maven("https://maven.fabricmc.net/")
+}
+
 dependencies {
-    minecraft("com.mojang:minecraft:${property("minecraftVersion")}")
+    // Minecraft 26.1+ is unobfuscated: no mappings, standard dependency scopes.
+    "minecraft"("com.mojang:minecraft:${property("minecraftVersion")}")
     implementation("net.fabricmc:fabric-loader:${property("fabricLoaderVersion")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${property("fabricApiVersion")}")
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+    options.release.set(providers.gradleProperty("javaVersion").get().toInt())
 }
 
 tasks.processResources {
@@ -17,8 +35,4 @@ tasks.processResources {
     filesMatching("fabric.mod.json") {
         expand("version" to pluginVersion)
     }
-}
-
-java {
-    withSourcesJar()
 }

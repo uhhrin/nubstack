@@ -31,7 +31,17 @@ Download jars from [Releases](../../releases) after tagging.
 
 ## Build
 
+Gradle needs JVM 17+ to start (this repo targets Java 25). If your shell still
+has Java 8 on `PATH`, wrap the build (do not run `use-java.sh` alone):
+
 ```bash
+./scripts/use-java.sh ./gradlew build
+```
+
+Or permanently in the current shell:
+
+```bash
+source ./scripts/use-java.sh
 ./gradlew build
 ```
 
