@@ -2,15 +2,21 @@
 
 Shared Java library for nubstack plugins.
 
-## Scope
+## Modules
 
-- Configuration loading helpers
-- Async database access (HikariCP) once introduced
-- Redis messaging helpers once introduced
-- MiniMessage / i18n scaffolding once introduced
-- Scheduler abstractions that stay platform-agnostic at this layer
+| Package | Responsibility |
+| --- | --- |
+| `dev.nubstack.spine.config` | YAML loading and dotted-path validation |
+| `dev.nubstack.spine.db` | HikariCP pool creation from validated settings |
+| `dev.nubstack.spine.redis` | Lettuce-backed pub/sub bus |
+| `dev.nubstack.spine.text` | MiniMessage parsing helpers |
 
-Platform-specific code belongs in plugin modules, not here.
+Platform APIs (Paper, Velocity, Fabric) stay in plugin modules. JDBC drivers are
+provided by each plugin, not by spine.
+
+## Dependency pins
+
+See root `gradle.properties` for HikariCP, Lettuce, Adventure, and SnakeYAML versions.
 
 ## Build
 
@@ -22,5 +28,5 @@ From the repository root:
 
 ## Status
 
-Foundation only. Higher-level services are added when the first consumer (aegis)
-needs them.
+Config, database, Redis, and MiniMessage helpers are available for the first
+consumer plugin (`aegis`).

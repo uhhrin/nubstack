@@ -8,7 +8,7 @@ allprojects {
 }
 
 subprojects {
-    apply(plugin = "java")
+    apply(plugin = "java-library")
 
     extensions.configure<JavaPluginExtension> {
         val javaVersion = JavaVersion.toVersion(providers.gradleProperty("javaVersion").get())

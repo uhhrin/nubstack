@@ -10,7 +10,7 @@ Java 21. Versions are pinned in `gradle.properties` and verified in CI.
 
 | Module | Role |
 | --- | --- |
-| [spine](spine/) | Config helpers, async database access, Redis messaging, i18n scaffolding |
+| [spine](spine/) | YAML config, HikariCP pools, Redis pub/sub, MiniMessage helpers |
 
 ## Plugins
 
