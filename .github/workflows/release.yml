@@ -4,7 +4,9 @@ on:
   push:
     tags:
       - "spine-v*"
-      - "aegis-v*"
+      - "aegis-paper-v*"
+      - "aegis-velocity-v*"
+      - "aegis-common-v*"
       - "harbor-v*"
       - "loom-v*"
       - "spotlight-v*"
@@ -27,7 +29,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
 
       - name: Writing policy
         run: ./scripts/check-writing-policy.sh
