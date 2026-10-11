@@ -1,0 +1,15 @@
+name: spotlight
+version: ${version}
+main: dev.nubstack.spotlight.SpotlightPlugin
+api-version: '26.2'
+authors: [nubstack]
+description: Lag attribution by chunk
+commands:
+  spotlight:
+    description: spotlight command
+    permission: spotlight.use
+permissions:
+  spotlight.use:
+    default: op
+  spotlight.scan:
+    default: op

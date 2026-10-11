@@ -10,6 +10,14 @@ allprojects {
 subprojects {
     apply(plugin = "java-library")
 
+    repositories {
+        mavenCentral()
+        maven("https://repo.papermc.io/repository/maven-public/")
+        maven("https://maven.fabricmc.net/")
+        maven("https://jitpack.io")
+    }
+
+
     extensions.configure<JavaPluginExtension> {
         val javaVersion = JavaVersion.toVersion(providers.gradleProperty("javaVersion").get())
         sourceCompatibility = javaVersion

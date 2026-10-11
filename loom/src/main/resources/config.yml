@@ -1,0 +1,7 @@
+
+database:
+  jdbc-url: jdbc:mariadb://localhost:3306/nubstack
+  username: nubstack
+  password: change-me
+  pool-size: 5
+lock-seconds: 30

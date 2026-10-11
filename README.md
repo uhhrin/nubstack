@@ -14,22 +14,20 @@ Java 25. Versions are pinned in `gradle.properties` and verified in CI.
 
 ## Plugins
 
-Built one at a time. Download jars from [Releases](../../releases).
+Download jars from [Releases](../../releases) after tagging.
 
 | Plugin | Platform | Status | Description |
 | --- | --- | --- | --- |
-| [aegis](aegis/) | Paper + Velocity | in development | Network bans, mutes, warnings, audit log, Discord webhooks |
-| harbor | Velocity | planned | Priority queues and backend health routing |
-| loom | Paper | planned | Cross-server inventory and stats with locking |
-| spotlight | Paper | planned | Lag attribution by chunk, entity, and hopper cost |
-| gatekeep | Velocity | planned | Connection throttling and reputation scoring |
-| ledger | Paper | planned | Vault-compatible economy with a transaction ledger |
-| cull | Paper | planned | Per-chunk mob limits, stacking, and cleanup |
-| amber | Paper | planned | Async world snapshots with retention and remote upload |
-| tether | Paper | planned | Discord account linking, whitelist, chat bridge |
-| cairn | Fabric | planned | Server-side death chests for vanilla clients |
-
-Plugin module paths appear under `plugins/<name>/` when that plugin is started.
+| [aegis](aegis/) | Paper + Velocity | mvp | Network bans, mutes, warnings, audit log, Discord webhooks |
+| [harbor](harbor/) | Velocity | mvp | Priority queues and backend health routing |
+| [loom](loom/) | Paper | mvp | Cross-server inventory sync with transfer locks |
+| [spotlight](spotlight/) | Paper | mvp | Lag attribution by chunk, entity, and hopper cost |
+| [gatekeep](gatekeep/) | Velocity | mvp | Connection throttling and reputation scoring |
+| [ledger](ledger/) | Paper | mvp | Vault-compatible economy with a transaction ledger |
+| [cull](cull/) | Paper | mvp | Per-chunk mob limits and cleanup |
+| [amber](amber/) | Paper | mvp | Async world snapshots with retention |
+| [tether](tether/) | Paper | mvp | Discord account linking and chat bridge |
+| [cairn](cairn/) | Fabric | mvp | Server-side death chests for vanilla clients |
 
 ## Build
 
@@ -42,6 +40,8 @@ Run writing-policy checks:
 ```bash
 ./scripts/check-writing-policy.sh
 ```
+
+Live multi-plugin testing on one server comes after these MVPs.
 
 ## License
 

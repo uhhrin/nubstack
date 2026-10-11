@@ -101,6 +101,14 @@ public final class YamlConfig {
         throw new ConfigException("Expected boolean at '" + path + "'");
     }
 
+    public boolean optionalBoolean(String path, boolean defaultValue) {
+        Object value = resolve(path);
+        if (value == null) {
+            return defaultValue;
+        }
+        return requireBoolean(path);
+    }
+
     public YamlConfig section(String path) {
         Object value = requireValue(path);
         if (!(value instanceof Map<?, ?> map)) {

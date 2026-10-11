@@ -1,0 +1,15 @@
+name: cull
+version: ${version}
+main: dev.nubstack.cull.CullPlugin
+api-version: '26.2'
+authors: [nubstack]
+description: Per-chunk mob limits and cleanup
+commands:
+  cull:
+    description: cull command
+    permission: cull.use
+permissions:
+  cull.use:
+    default: op
+  cull.admin:
+    default: op

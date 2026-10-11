@@ -1,0 +1,15 @@
+name: loom
+version: ${version}
+main: dev.nubstack.loom.LoomPlugin
+api-version: '26.2'
+authors: [nubstack]
+description: Cross-server player data sync
+commands:
+  loom:
+    description: loom command
+    permission: loom.use
+permissions:
+  loom.use:
+    default: op
+  loom.admin:
+    default: op

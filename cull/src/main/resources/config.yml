@@ -1,0 +1,2 @@
+max-entities-per-chunk: 40
+cleanup-interval-ticks: 200

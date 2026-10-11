@@ -1,0 +1,15 @@
+name: amber
+version: ${version}
+main: dev.nubstack.amber.AmberPlugin
+api-version: '26.2'
+authors: [nubstack]
+description: Async world snapshots with retention
+commands:
+  amber:
+    description: amber command
+    permission: amber.use
+permissions:
+  amber.use:
+    default: op
+  amber.admin:
+    default: op

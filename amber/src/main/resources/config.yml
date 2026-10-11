@@ -1,0 +1,4 @@
+
+snapshot-dir: snapshots
+retain: 5
+default-world: world

@@ -1,0 +1,22 @@
+name: ledger
+version: ${version}
+main: dev.nubstack.ledger.LedgerPlugin
+api-version: '26.2'
+authors: [nubstack]
+description: Vault-compatible economy with ledger
+commands:
+  bal:
+    description: ledger command
+    permission: ledger.use
+  pay:
+    description: ledger command
+    permission: ledger.use
+  ledger:
+    description: ledger command
+    permission: ledger.use
+permissions:
+  ledger.use:
+    default: true
+  ledger.admin:
+    default: op
+softdepend: [Vault]
