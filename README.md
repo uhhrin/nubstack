@@ -53,16 +53,19 @@ Run writing-policy checks:
 
 ## Local network (Docker)
 
-Velocity + hub + minigame + Redis + MariaDB, with Mineflayer smokes:
+Velocity + Paper hub (+ optional minigame) + Redis + MariaDB + docs site, with
+Mineflayer smokes:
 
 ```bash
-./gradlew build
+./scripts/use-java.sh ./gradlew build
 ./testbed/scripts/sync-plugins.sh
-docker compose -f testbed/docker-compose.yml up -d
-./testbed/scripts/paste-lobbies.sh
+docker compose -f testbed/docker-compose.yml --profile minigame up -d
 ```
 
-See [testbed/README.md](testbed/README.md).
+- Join `localhost:25565`
+- Command guide: `http://localhost:8080`
+- Full topology, env map, and commands: [docs/LOCAL-NETWORK.md](docs/LOCAL-NETWORK.md)
+- Shorter ops notes: [testbed/README.md](testbed/README.md)
 
 ## Releases
 

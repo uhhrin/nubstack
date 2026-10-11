@@ -45,6 +45,20 @@ class YamlConfigTest {
     }
 
     @Test
+    void optionalString_treatsBlankAsAbsent() throws IOException {
+        Path file = tempDir.resolve("config.yml");
+        Files.writeString(file, """
+                webhook-url: ""
+                token: "   "
+                """);
+
+        YamlConfig config = YamlConfig.load(file);
+
+        assertFalse(config.optionalString("webhook-url").isPresent());
+        assertFalse(config.optionalString("token").isPresent());
+    }
+
+    @Test
     void load_rejectsMissingFile() {
         Path missing = tempDir.resolve("nope.yml");
         assertThrows(ConfigException.class, () -> YamlConfig.load(missing));

@@ -1,6 +1,0 @@
-_version: 29
-proxies:
-  velocity:
-    enabled: true
-    online-mode: false
-    secret: nubstack-forwarding-secret

@@ -1,29 +1,72 @@
-# Local Velocity network: proxy + hub + minigame + Redis + MariaDB.
-# Join at localhost:25565 (offline mode for Mineflayer bots).
+# Local Velocity network: proxy + Paper hub (+ optional minigame) + Redis + MariaDB + docs.
+# Join at localhost:${PROXY_HOST_PORT:-25565} (offline mode for Mineflayer bots).
+# Docs: http://localhost:${DOCS_HOST_PORT:-8080}
+#
+# Default stack is intentionally light: one Paper backend.
+# Second backend:
+#   docker compose -f testbed/docker-compose.yml --profile minigame up -d
 #
 # Usage:
-#   ./gradlew build
+#   cp testbed/.env.example testbed/.env   # optional
+#   ./scripts/use-java.sh ./gradlew build
 #   ./testbed/scripts/sync-plugins.sh
 #   docker compose -f testbed/docker-compose.yml up -d
-#   ./testbed/scripts/paste-lobbies.sh
-#   cd testbed/bots && npm install && npm run smoke
+#
+# Wipe broken world volumes:
+#   docker compose -f testbed/docker-compose.yml down -v
+
+x-paper-env: &paper-env
+  EULA: "TRUE"
+  TYPE: PAPER
+  VERSION: ${MC_VERSION:-26.2}
+  ONLINE_MODE: "FALSE"
+  DIFFICULTY: peaceful
+  MODE: creative
+  SPAWN_PROTECTION: "0"
+  ENABLE_RCON: "true"
+  RCON_PASSWORD: ${RCON_PASSWORD:-nubstack}
+  RCON_PORT: 25575
+  FORCE_GAMEMODE: "true"
+  VIEW_DISTANCE: ${VIEW_DISTANCE:-4}
+  SIMULATION_DISTANCE: ${SIMULATION_DISTANCE:-4}
+  MAX_PLAYERS: ${MAX_PLAYERS:-10}
+  SPAWN_MONSTERS: "false"
+  SPAWN_ANIMALS: "false"
+  SPAWN_NPCS: "false"
+  USE_AIKAR_FLAGS: "false"
+  JVM_XX_OPTS: "-XX:ActiveProcessorCount=${PAPER_CPU_COUNT:-2} -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+  PAPER_VELOCITY_ENABLED: "true"
+  PAPER_VELOCITY_ONLINE_MODE: "false"
+  PAPER_VELOCITY_SECRET: ${VELOCITY_FORWARDING_SECRET:-nubstack-forwarding-secret}
+  # Mineflayer currently tops out at 26.1; ViaBackwards lets those bots join 26.2.
+  MODRINTH_PROJECTS: viaversion,viabackwards
 
 services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 128m
     networks: [nubstack]
 
   mariadb:
     image: mariadb:11
     restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 512m
     environment:
-      MARIADB_ROOT_PASSWORD: nubstack
-      MARIADB_DATABASE: nubstack
-      MARIADB_USER: nubstack
-      MARIADB_PASSWORD: nubstack
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-nubstack}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-nubstack}
+      MARIADB_USER: ${MARIADB_USER:-nubstack}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-nubstack}
+      MARIADB_AUTO_UPGRADE: "1"
+    command:
+      - --innodb-buffer-pool-size=128M
+      - --performance-schema=OFF
+      - --max-connections=150
     volumes:
       - mariadb-data:/var/lib/mysql
+      - ./mariadb/init:/docker-entrypoint-initdb.d:ro
     networks: [nubstack]
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
@@ -31,17 +74,30 @@ services:
       timeout: 5s
       retries: 10
 
+  docs:
+    image: nginx:alpine
+    restart: unless-stopped
+    cpus: 0.1
+    mem_limit: 32m
+    ports:
+      - "${DOCS_HOST_PORT:-8080}:80"
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+    networks: [nubstack]
+
   velocity:
     image: itzg/mc-proxy:latest
     restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 384m
     depends_on:
       - hub
-      - minigame
     ports:
-      - "25565:25577"
+      - "${PROXY_HOST_PORT:-25565}:25577"
     environment:
       TYPE: VELOCITY
-      MEMORY: 512M
+      MEMORY: ${VELOCITY_MEMORY:-256M}
+      JVM_XX_OPTS: "-XX:ActiveProcessorCount=1"
     volumes:
       - ./velocity/velocity.toml:/config/velocity.toml:ro
       - ./velocity/forwarding.secret:/config/forwarding.secret:ro
@@ -52,60 +108,41 @@ services:
   hub:
     image: itzg/minecraft-server:java25
     restart: unless-stopped
+    cpus: ${PAPER_CPUS:-1.5}
+    mem_limit: ${HUB_MEM_LIMIT:-1280m}
     depends_on:
       mariadb:
         condition: service_healthy
       redis:
         condition: service_started
     environment:
-      EULA: "TRUE"
-      TYPE: PAPER
-      VERSION: "26.2"
-      ONLINE_MODE: "FALSE"
-      MEMORY: 2G
-      DIFFICULTY: peaceful
-      MODE: creative
-      LEVEL_TYPE: FLAT
-      SPAWN_PROTECTION: "0"
-      ENABLE_RCON: "true"
-      RCON_PASSWORD: nubstack
-      RCON_PORT: 25575
-      MODRINTH_PROJECTS: fastasyncworldedit
-      FORCE_GAMEMODE: "true"
+      <<: *paper-env
+      MEMORY: ${HUB_MEMORY:-1G}
     volumes:
       - hub-data:/data
       - ./plugins/paper:/plugins:ro
-      - ./schematics:/schematics:ro
-      - ./paper/paper-global.yml:/data/config/paper-global.yml
+      - ./config:/config:ro
     networks: [nubstack]
 
+  # Optional second backend. Enable with: --profile minigame
   minigame:
+    profiles: ["minigame"]
     image: itzg/minecraft-server:java25
     restart: unless-stopped
+    cpus: ${PAPER_CPUS:-1.5}
+    mem_limit: ${MINIGAME_MEM_LIMIT:-1280m}
     depends_on:
       mariadb:
         condition: service_healthy
       redis:
         condition: service_started
     environment:
-      EULA: "TRUE"
-      TYPE: PAPER
-      VERSION: "26.2"
-      ONLINE_MODE: "FALSE"
-      MEMORY: 2G
-      DIFFICULTY: peaceful
-      MODE: adventure
-      LEVEL_TYPE: FLAT
-      SPAWN_PROTECTION: "0"
-      ENABLE_RCON: "true"
-      RCON_PASSWORD: nubstack
-      RCON_PORT: 25575
-      FORCE_GAMEMODE: "true"
+      <<: *paper-env
+      MEMORY: ${MINIGAME_MEMORY:-1G}
     volumes:
       - minigame-data:/data
       - ./plugins/paper:/plugins:ro
-      - ./schematics:/schematics:ro
-      - ./paper/paper-global.yml:/data/config/paper-global.yml
+      - ./config:/config:ro
     networks: [nubstack]
 
   bots:
@@ -117,6 +154,7 @@ services:
     environment:
       PROXY_HOST: velocity
       PROXY_PORT: "25577"
+      BOT_COUNT: ${BOT_COUNT:-3}
     volumes:
       - ./bots:/bots
     command: ["sh", "-c", "npm install && npm run smoke"]

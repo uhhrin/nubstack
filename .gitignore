@@ -26,7 +26,6 @@ Thumbs.db
 
 # Local / secrets
 .env
-.env.*
 *.log
 local.properties
 *.pem
@@ -37,7 +36,12 @@ testbed/data/
 testbed/logs/
 testbed/cache/
 testbed/plugins/**/*.jar
+# Staged by sync-plugins.sh from plugin-config/ (do not commit)
+testbed/plugins/paper/*/
+testbed/plugins/velocity/*/
 testbed/bots/node_modules/
+testbed/bots/package-lock.json
+
 run/
 logs/
 crash-reports/

@@ -1,0 +1,6 @@
+database:
+  jdbc-url: jdbc:mariadb://mariadb:3306/nubstack
+  username: nubstack
+  password: nubstack
+  pool-size: 2
+currency-name: Credits

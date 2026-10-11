@@ -56,8 +56,11 @@ public final class YamlConfig {
         if (value == null) {
             return Optional.empty();
         }
-        if (!(value instanceof String text) || text.isBlank()) {
-            throw new ConfigException("Expected non-blank string at '" + path + "'");
+        if (!(value instanceof String text)) {
+            throw new ConfigException("Expected string at '" + path + "'");
+        }
+        if (text.isBlank()) {
+            return Optional.empty();
         }
         return Optional.of(text.trim());
     }

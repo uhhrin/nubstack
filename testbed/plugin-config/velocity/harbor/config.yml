@@ -1,0 +1,8 @@
+default-server: hub
+queue-servers:
+  - hub
+  - minigame
+priority-permissions:
+  harbor.priority.vip: 10
+  harbor.priority.staff: 50
+health-interval-seconds: 15

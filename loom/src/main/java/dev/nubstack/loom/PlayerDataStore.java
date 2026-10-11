@@ -22,7 +22,7 @@ public final class PlayerDataStore {
              PreparedStatement ps = c.prepareStatement("""
                      CREATE TABLE IF NOT EXISTS loom_player_data (
                        player_id VARCHAR(36) PRIMARY KEY,
-                       inventory_blob CLOB NOT NULL,
+                       inventory_blob LONGTEXT NOT NULL,
                        updated_at TIMESTAMP NOT NULL
                      )
                      """)) {

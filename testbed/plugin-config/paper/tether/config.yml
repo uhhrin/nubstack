@@ -1,0 +1,10 @@
+database:
+  jdbc-url: jdbc:mariadb://mariadb:3306/nubstack
+  username: nubstack
+  password: nubstack
+  pool-size: 2
+discord:
+  token: ""
+  channel-id: ""
+  guild-id: ""
+require-link-to-join: false

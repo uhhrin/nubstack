@@ -50,4 +50,11 @@ class DataSourcesTest {
                 "bad",
                 1));
     }
+
+    @Test
+    void create_setsDriverClassForKnownJdbcUrls() {
+        assertEquals("org.h2.Driver", DataSources.driverClassName("jdbc:h2:mem:x"));
+        assertEquals("org.mariadb.jdbc.Driver", DataSources.driverClassName("jdbc:mariadb://db:3306/x"));
+        assertEquals("org.mariadb.jdbc.Driver", DataSources.driverClassName("jdbc:mysql://db:3306/x"));
+    }
 }

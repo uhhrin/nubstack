@@ -1,0 +1,8 @@
+# Copied into /data/config by the itzg image on start.
+# PAPER_VELOCITY_SECRET from Compose overrides proxies.velocity.secret at runtime.
+_version: 29
+proxies:
+  velocity:
+    enabled: true
+    online-mode: false
+    secret: nubstack-forwarding-secret

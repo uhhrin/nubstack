@@ -9,12 +9,14 @@ function sleep(ms) {
 }
 
 async function spawnBot(name) {
+  // Upstream Mineflayer protocol data currently stops at 26.1. Paper is 26.2;
+  // ViaBackwards on the backends translates. Do not set version to 26.2 yet.
   const bot = mineflayer.createBot({
     host,
     port,
     username: name,
     auth: 'offline',
-    version: false,
+    version: process.env.BOT_VERSION || '26.1',
   })
 
   await new Promise((resolve, reject) => {
@@ -29,7 +31,8 @@ async function spawnBot(name) {
     })
     bot.once('kicked', (reason) => {
       clearTimeout(timer)
-      reject(new Error(`${name} kicked: ${reason}`))
+      const detail = typeof reason === 'string' ? reason : JSON.stringify(reason)
+      reject(new Error(`${name} kicked: ${detail}`))
     })
   })
 
@@ -41,7 +44,7 @@ const bots = []
 try {
   for (let i = 1; i <= count; i++) {
     bots.push(await spawnBot(`Bot${i}`))
-    await sleep(1_000)
+    await sleep(Number(process.env.BOT_JOIN_DELAY_MS || 2_500))
   }
   console.log(`smoke ok: ${bots.length} bots on ${host}:${port}`)
   process.exitCode = 0

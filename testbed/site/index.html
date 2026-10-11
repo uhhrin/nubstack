@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>nubstack testbed guide</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <p class="brand">nubstack</p>
+    <h1>Local network test guide</h1>
+    <p class="lede">
+      Commands, permissions, and expected chat output for the Docker Velocity
+      stack (hub + minigame). Join <code>localhost:25565</code> with vanilla
+      Minecraft <strong>26.2</strong>.
+    </p>
+    <nav class="toc">
+      <a href="#setup">Setup</a>
+      <a href="#aegis">aegis</a>
+      <a href="#harbor">harbor</a>
+      <a href="#gatekeep">gatekeep</a>
+      <a href="#loom">loom</a>
+      <a href="#spotlight">spotlight</a>
+      <a href="#cull">cull</a>
+      <a href="#ledger">ledger</a>
+      <a href="#amber">amber</a>
+      <a href="#tether">tether</a>
+      <a href="#cairn">cairn</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="setup">
+      <h2>Setup checklist</h2>
+      <ol>
+        <li><code>./scripts/use-java.sh ./gradlew build</code></li>
+        <li><code>cp testbed/.env.example testbed/.env</code> (optional overrides)</li>
+        <li><code>./testbed/scripts/sync-plugins.sh</code></li>
+        <li><code>docker compose -f testbed/docker-compose.yml up -d</code></li>
+        <li>Join <code>localhost:25565</code> (plain vanilla spawn on hub). Start the second backend only when needed: <code>docker compose -f testbed/docker-compose.yml --profile minigame up -d</code>, then <code>/server minigame</code>.</li>
+      </ol>
+      <p>
+        Give yourself op on hub for permission defaults that use <code>op</code>.
+        Velocity permissions for harbor/aegis may need a permissions plugin or
+        LuckPerms later; for MVP, many checks are console-friendly or player-facing only.
+      </p>
+      <div class="callout">
+        <strong>Honest status:</strong> MVP plugins. Docker configs under
+        <code>plugin-config/</code> already use <code>mariadb</code> /
+        <code>redis</code>. Run <code>sync-plugins.sh</code> before Compose.
+        Mineflayer joins as protocol 26.1 via ViaBackwards. Full write-up:
+        <code>docs/LOCAL-NETWORK.md</code>.
+      </div>
+    </section>
+
+    <section id="aegis">
+      <h2>aegis <span class="tag">Paper + Velocity</span></h2>
+      <p>Network bans, mutes, warnings, SQL audit, Redis sync, optional Discord webhook.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Permission</th><th>Default</th><th>Expected output / effect</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/aegis ban &lt;player&gt; [duration] &lt;reason&gt;</code></td>
+            <td><code>aegis.ban</code></td>
+            <td>op</td>
+            <td>Chat: <code>BAN applied to &lt;player&gt;</code>. Target kicked if online. Banned UUID cannot rejoin hub/minigame while active. Duration examples: <code>30s</code>, <code>12h</code>, <code>7d</code>. Omit duration for permanent.</td>
+          </tr>
+          <tr>
+            <td><code>/aegis unban &lt;player&gt;</code></td>
+            <td><code>aegis.unban</code></td>
+            <td>op</td>
+            <td><code>Revoked</code> or <code>No active punishment</code>.</td>
+          </tr>
+          <tr>
+            <td><code>/aegis mute &lt;player&gt; [duration] &lt;reason&gt;</code></td>
+            <td><code>aegis.mute</code></td>
+            <td>op</td>
+            <td><code>MUTE applied to &lt;player&gt;</code>. Muted player chat is cancelled; they see the muted MiniMessage template.</td>
+          </tr>
+          <tr>
+            <td><code>/aegis unmute &lt;player&gt;</code></td>
+            <td><code>aegis.unmute</code></td>
+            <td>op</td>
+            <td><code>Revoked</code> or <code>No active punishment</code>.</td>
+          </tr>
+          <tr>
+            <td><code>/aegis warn &lt;player&gt; &lt;reason&gt;</code></td>
+            <td><code>aegis.warn</code></td>
+            <td>op</td>
+            <td><code>WARN applied to &lt;player&gt;</code>. Stored in history only (no kick).</td>
+          </tr>
+          <tr>
+            <td><code>/aegis history &lt;player&gt;</code></td>
+            <td><code>aegis.history</code></td>
+            <td>op</td>
+            <td>Lines like <code>BAN by Admin: cheating [active]</code>, or <code>No history</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Also requires base permission <code>aegis.use</code> (op) to see the command on Velocity.</p>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>Two clients (or one client + Mineflayer bot).</li>
+        <li>Ban bot with <code>/aegis ban Bot1 1h testing</code>.</li>
+        <li>Confirm bot cannot reconnect.</li>
+        <li><code>/aegis unban Bot1</code> then reconnect succeeds.</li>
+        <li>Mute yourself, send chat, confirm block message; unmute.</li>
+      </ol>
+    </section>
+
+    <section id="harbor">
+      <h2>harbor <span class="tag">Velocity</span></h2>
+      <p>Priority queues and backend health routing when servers are full or unhealthy.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Permission</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/harbor leave</code></td>
+            <td>(player)</td>
+            <td><code>Left queue</code> or <code>Not queued</code>.</td>
+          </tr>
+          <tr>
+            <td><code>/harbor status [server]</code></td>
+            <td>(anyone)</td>
+            <td><code>Queue hub: N | healthy=true/false</code> (server defaults from config).</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Priority permissions (config-driven): <code>harbor.priority.vip</code> (10), <code>harbor.priority.staff</code> (50).</p>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>Fill a backend or mark it unhealthy so players queue.</li>
+        <li>Join with a normal bot and a VIP-permission player; VIP should leave queue first when a slot opens.</li>
+        <li><code>/harbor status hub</code> shows queue size.</li>
+      </ol>
+    </section>
+
+    <section id="gatekeep">
+      <h2>gatekeep <span class="tag">Velocity</span></h2>
+      <p>Connection rate limiting / reputation. No player command in the MVP.</p>
+      <table>
+        <thead>
+          <tr><th>Behavior</th><th>Config</th><th>Expected effect</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Burst connects from same address</td>
+            <td><code>max-attempts</code>, <code>window-seconds</code></td>
+            <td>Extra attempts denied with MiniMessage <code>deny-message</code> (default: too many connections).</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>Run Mineflayer with a high <code>BOT_COUNT</code> quickly from one host.</li>
+        <li>Confirm later bots are kicked/denied once the window limit is hit.</li>
+        <li>Wait for the window and confirm joins work again.</li>
+      </ol>
+    </section>
+
+    <section id="loom">
+      <h2>loom <span class="tag">Paper</span></h2>
+      <p>Cross-server inventory sync with transfer locks.</p>
+      <table>
+        <thead>
+          <tr><th>Command / event</th><th>Permission</th><th>Expected output / effect</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/loom</code></td>
+            <td><code>loom.use</code></td>
+            <td><code>loom sync is active</code>.</td>
+          </tr>
+          <tr>
+            <td>Quit then join other Paper server</td>
+            <td>(passive)</td>
+            <td>Inventory restored from SQL. If lock held: kick <code>Data sync in progress</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>On hub, put unique items in inventory.</li>
+        <li>Switch to minigame (both need loom + shared DB).</li>
+        <li>Confirm items match. Rapid reconnect during sync should hit the lock kick.</li>
+      </ol>
+    </section>
+
+    <section id="spotlight">
+      <h2>spotlight <span class="tag">Paper</span></h2>
+      <p>Lag attribution by loaded chunk entity/hopper cost.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Permission</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/spotlight</code></td>
+            <td><code>spotlight.use</code> to see command; <code>spotlight.scan</code> to run</td>
+            <td>Header <code>Top lag chunks:</code> then lines like <code>world 0,0 entities=12 hoppers=3 score=36</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>Spawn many entities or place hoppers in one chunk.</li>
+        <li>Run <code>/spotlight</code> as op and confirm that chunk ranks near the top.</li>
+      </ol>
+    </section>
+
+    <section id="cull">
+      <h2>cull <span class="tag">Paper</span></h2>
+      <p>Per-chunk mob limits and periodic cleanup.</p>
+      <table>
+        <thead>
+          <tr><th>Command / behavior</th><th>Permission</th><th>Expected output / effect</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/cull</code></td>
+            <td><code>cull.use</code></td>
+            <td><code>cull max per chunk: &lt;n&gt;</code> (from config).</td>
+          </tr>
+          <tr>
+            <td>Creature spawn over limit</td>
+            <td>(passive)</td>
+            <td>Spawn cancelled. Periodic task removes oldest non-player entities when over limit.</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>Set a low <code>max-entities-per-chunk</code> and reload/restart.</li>
+        <li>Spawn mobs past the limit; extras should not appear / get culled.</td>
+      </ol>
+    </section>
+
+    <section id="ledger">
+      <h2>ledger <span class="tag">Paper</span></h2>
+      <p>Vault-compatible economy with a SQL ledger. Vault soft-depends if present.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Permission</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/bal [player]</code></td>
+            <td><code>ledger.use</code></td>
+            <td><code>&lt;name&gt; balance: &lt;amount&gt;</code>.</td>
+          </tr>
+          <tr>
+            <td><code>/pay &lt;player&gt; &lt;amount&gt;</code></td>
+            <td><code>ledger.use</code></td>
+            <td><code>Paid &lt;amount&gt;</code> or <code>Insufficient funds</code>.</td>
+          </tr>
+          <tr>
+            <td><code>/ledger give &lt;player&gt; &lt;amount&gt;</code></td>
+            <td><code>ledger.admin</code></td>
+            <td><code>Deposited &lt;amount&gt;</code> or <code>No permission</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li><code>/ledger give Steve 100</code> as op.</li>
+        <li><code>/bal Steve</code> shows 100.</li>
+        <li><code>/pay Alex 25</code> from Steve; both balances update.</li>
+      </ol>
+    </section>
+
+    <section id="amber">
+      <h2>amber <span class="tag">Paper</span></h2>
+      <p>Async world snapshots with retention.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Permission</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/amber snapshot [world]</code></td>
+            <td><code>amber.use</code> to see command; <code>amber.admin</code> to run</td>
+            <td><code>Snapshot saved: &lt;file&gt;</code> or world/error message.</td>
+          </tr>
+          <tr>
+            <td><code>/amber list</code></td>
+            <td><code>amber.use</code> + <code>amber.admin</code></td>
+            <td>One filename per line, or <code>No snapshots</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li><code>/amber snapshot world</code> then <code>/amber list</code>.</li>
+        <li>Create more than <code>retain</code> snapshots; oldest should be pruned.</li>
+      </ol>
+    </section>
+
+    <section id="tether">
+      <h2>tether <span class="tag">Paper</span></h2>
+      <p>Discord account linking and chat bridge. Needs a Discord bot token in config.</p>
+      <table>
+        <thead>
+          <tr><th>Command / flow</th><th>Permission</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/tether link</code></td>
+            <td><code>tether.use</code></td>
+            <td><code>In Discord, send: !link &lt;code&gt;</code>.</td>
+          </tr>
+          <tr>
+            <td>Discord <code>!link &lt;code&gt;</code></td>
+            <td>(Discord)</td>
+            <td>Discord replies <code>Linked to Minecraft account.</code></td>
+          </tr>
+          <tr>
+            <td>Game chat / Discord chat</td>
+            <td>(passive)</td>
+            <td>Bridged messages when token + channel-id are set.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>If <code>require-link-to-join</code> is true, unlinked players are kicked: <code>Link Discord with /tether link</code>.</p>
+    </section>
+
+    <section id="cairn">
+      <h2>cairn <span class="tag">Fabric server</span></h2>
+      <p>Server-side death chests for vanilla clients. Not loaded in the Paper testbed stack.</p>
+      <table>
+        <thead>
+          <tr><th>Behavior</th><th>Expected effect</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Player death</td>
+            <td>Chest placed at/near death with inventory; message <code>Your grave was placed at ...</code>. Expires after 15 minutes and drops remaining items.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Test on a Fabric dedicated server with the cairn jar, not the Velocity Paper compose stack.</p>
+    </section>
+
+    <section id="velocity">
+      <h2>Velocity built-ins</h2>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Expected use</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/server hub</code> / <code>/server minigame</code></td>
+            <td>Switch backends once Velocity knows both servers (already listed in <code>velocity.toml</code>).</td>
+          </tr>
+          <tr>
+            <td><code>/server</code></td>
+            <td>Lists available servers.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <p>nubstack local docs. Served from the <code>docs</code> Compose service on port 8080.</p>
+  </footer>
+</body>
+</html>
