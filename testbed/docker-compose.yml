@@ -40,6 +40,11 @@ x-paper-env: &paper-env
   PAPER_VELOCITY_SECRET: ${VELOCITY_FORWARDING_SECRET:-nubstack-forwarding-secret}
   # Mineflayer currently tops out at 26.1; ViaBackwards lets those bots join 26.2.
   MODRINTH_PROJECTS: viaversion,viabackwards
+  # Interpolate ${CFG_*} placeholders while syncing plugin configs from /plugins.
+  REPLACE_ENV_DURING_SYNC: "true"
+  CFG_TETHER_DISCORD_TOKEN: ${TETHER_DISCORD_TOKEN:-}
+  CFG_TETHER_DISCORD_CHANNEL_ID: ${TETHER_DISCORD_CHANNEL_ID:-}
+  CFG_TETHER_DISCORD_GUILD_ID: ${TETHER_DISCORD_GUILD_ID:-}
 
 services:
   redis:

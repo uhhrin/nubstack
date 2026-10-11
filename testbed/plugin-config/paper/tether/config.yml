@@ -4,7 +4,7 @@ database:
   password: nubstack
   pool-size: 2
 discord:
-  token: ""
-  channel-id: ""
-  guild-id: ""
+  token: "${CFG_TETHER_DISCORD_TOKEN}"
+  channel-id: "${CFG_TETHER_DISCORD_CHANNEL_ID}"
+  guild-id: "${CFG_TETHER_DISCORD_GUILD_ID}"
 require-link-to-join: false

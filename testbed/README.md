@@ -46,6 +46,7 @@ What `.env` actually drives today:
 | `MC_VERSION`, `*_MEMORY`, `*_MEM_LIMIT`, `PAPER_CPUS`, view/sim distance | Compose resource + world knobs |
 | `RCON_PASSWORD`, `MARIADB_*` | Hub, minigame, MariaDB |
 | `VELOCITY_FORWARDING_SECRET` | Paper `PAPER_VELOCITY_SECRET` (must match `velocity/forwarding.secret`) |
+| `TETHER_DISCORD_TOKEN`, `TETHER_DISCORD_CHANNEL_ID`, `TETHER_DISCORD_GUILD_ID` | Interpolated into tether `config.yml` via `${CFG_TETHER_DISCORD_*}` |
 | `PROXY_HOST`, `PROXY_PORT`, `BOT_COUNT` | Host Mineflayer smoke (`bots/smoke.mjs`) |
 | `BOT_COUNT` | Compose `--profile bots` (host/port are fixed to `velocity:25577`) |
 
@@ -58,11 +59,15 @@ What `.env` actually drives today:
 Not injected from `.env`:
 
 - Velocity forwarding file: `velocity/forwarding.secret`
-- Docker plugin configs under `plugin-config/` (MariaDB host `mariadb`, Redis host
-  `redis`, password `nubstack`). `sync-plugins.sh` stages those folders next to
-  the jars so the itzg image copies them in. Do not bind-mount into
-  `/data/plugins` (that causes AccessDenied restart loops). MariaDB creates the
-  `aegis` database via `mariadb/init/`.
+- Docker plugin JDBC/Redis overrides under `plugin-config/` (MariaDB host
+  `mariadb`, Redis host `redis`, password `nubstack`). `sync-plugins.sh` stages
+  those folders next to the jars so the itzg image copies them in. Do not
+  bind-mount into `/data/plugins` (that causes AccessDenied restart loops).
+  MariaDB creates the `aegis` database via `mariadb/init/`.
+
+tether Discord secrets stay in `.env`. The staged YAML uses
+`${CFG_TETHER_DISCORD_*}` placeholders; Paper substitutes them when
+`REPLACE_ENV_DURING_SYNC=true`.
 
 ## Quick start
 
