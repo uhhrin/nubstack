@@ -1,0 +1,74 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "spine-v*"
+      - "aegis-v*"
+      - "harbor-v*"
+      - "loom-v*"
+      - "spotlight-v*"
+      - "gatekeep-v*"
+      - "ledger-v*"
+      - "cull-v*"
+      - "amber-v*"
+      - "tether-v*"
+      - "cairn-v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Writing policy
+        run: ./scripts/check-writing-policy.sh
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve module from tag
+        id: meta
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          MODULE="${TAG%-v*}"
+          VERSION="${TAG##*-v}"
+          echo "module=${MODULE}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build module
+        run: ./gradlew :${{ steps.meta.outputs.module }}:build --no-daemon -Pversion=${{ steps.meta.outputs.version }}
+
+      - name: Collect jars
+        id: jars
+        run: |
+          MODULE="${{ steps.meta.outputs.module }}"
+          mkdir -p dist
+          # Library modules land under <module>/build/libs
+          # Plugin modules will use plugins/<module>/build/libs once added
+          if [[ -d "${MODULE}/build/libs" ]]; then
+            cp "${MODULE}"/build/libs/*.jar dist/ || true
+          fi
+          if [[ -d "plugins/${MODULE}/build/libs" ]]; then
+            cp "plugins/${MODULE}"/build/libs/*.jar dist/ || true
+          fi
+          # Drop plain and sources jars from upload set when shaded jars exist later
+          ls -la dist
+          echo "count=$(find dist -name '*.jar' | wc -l)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ steps.meta.outputs.module }} ${{ steps.meta.outputs.version }}"
+          files: dist/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

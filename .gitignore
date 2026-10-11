@@ -1,0 +1,58 @@
+# Build
+.gradle/
+build/
+**/build/
+out/
+bin/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.war
+*.ear
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local / secrets
+.env
+.env.*
+*.log
+local.properties
+*.pem
+*.key
+
+# Test / runtime leftovers
+testbed/data/
+testbed/logs/
+testbed/cache/
+testbed/plugins/*.jar
+run/
+logs/
+crash-reports/
+world/
+world_nether/
+world_the_end/
+
+# Agent and editor tooling (local only, never publish)
+.agents/
+.cursor/
+AGENT*.md
+skills-lock.json
+*.local.md
+.ponytail/
+
+# Node harness (Mineflayer) install trees
+node_modules/
+package-lock.json
+**/node_modules/
