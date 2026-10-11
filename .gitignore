@@ -36,7 +36,8 @@ local.properties
 testbed/data/
 testbed/logs/
 testbed/cache/
-testbed/plugins/*.jar
+testbed/plugins/**/*.jar
+testbed/bots/node_modules/
 run/
 logs/
 crash-reports/

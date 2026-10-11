@@ -3,6 +3,7 @@ name: release
 on:
   push:
     tags:
+      - "nubstack-v*"
       - "spine-v*"
       - "aegis-paper-v*"
       - "aegis-velocity-v*"
@@ -16,12 +17,24 @@ on:
       - "amber-v*"
       - "tether-v*"
       - "cairn-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (for example 0.1.0)"
+        required: true
+        type: string
+      modules:
+        description: "all, or a single Gradle module name"
+        required: true
+        default: "all"
+        type: string
+
+permissions:
+  contents: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -37,40 +50,63 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Resolve module from tag
+      - name: Resolve release metadata
         id: meta
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          MODULE="${TAG%-v*}"
-          VERSION="${TAG##*-v}"
-          echo "module=${MODULE}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+            MODULES="${{ inputs.modules }}"
+            TAG="nubstack-v${VERSION}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            VERSION="${TAG##*-v}"
+            PREFIX="${TAG%-v*}"
+            if [[ "$PREFIX" == "nubstack" ]]; then
+              MODULES="all"
+            else
+              MODULES="$PREFIX"
+            fi
+          fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "modules=${MODULES}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag=${TAG} version=${VERSION} modules=${MODULES}"
 
-      - name: Build module
-        run: ./gradlew :${{ steps.meta.outputs.module }}:build --no-daemon -Pversion=${{ steps.meta.outputs.version }}
-
-      - name: Collect jars
-        id: jars
+      - name: Build selected modules
         run: |
-          MODULE="${{ steps.meta.outputs.module }}"
+          set -euo pipefail
+          VERSION="${{ steps.meta.outputs.version }}"
+          MODULES="${{ steps.meta.outputs.modules }}"
+          if [[ "$MODULES" == "all" ]]; then
+            ./gradlew build --no-daemon -Pversion="$VERSION"
+          else
+            ./gradlew ":${MODULES}:build" --no-daemon -Pversion="$VERSION"
+          fi
+
+      - name: Collect release jars
+        run: |
+          set -euo pipefail
           mkdir -p dist
-          # Library modules land under <module>/build/libs
-          # Plugin modules will use plugins/<module>/build/libs once added
-          if [[ -d "${MODULE}/build/libs" ]]; then
-            cp "${MODULE}"/build/libs/*.jar dist/ || true
-          fi
-          if [[ -d "plugins/${MODULE}/build/libs" ]]; then
-            cp "plugins/${MODULE}"/build/libs/*.jar dist/ || true
-          fi
-          # Drop plain and sources jars from upload set when shaded jars exist later
+          # Prefer shaded jars; skip sources/javadoc/plain classifier artifacts.
+          while IFS= read -r jar; do
+            base="$(basename "$jar")"
+            case "$base" in
+              *-sources.jar|*-javadoc.jar|*-plain.jar) continue ;;
+            esac
+            cp -f "$jar" "dist/$base"
+          done < <(find . -path '*/build/libs/*.jar' ! -path './build/*' -type f | sort)
+          echo "Collected jars:"
           ls -la dist
-          echo "count=$(find dist -name '*.jar' | wc -l)" >> "$GITHUB_OUTPUT"
+          test "$(find dist -name '*.jar' | wc -l)" -gt 0
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "${{ steps.meta.outputs.module }} ${{ steps.meta.outputs.version }}"
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: "nubstack ${{ steps.meta.outputs.version }}"
           files: dist/*
           generate_release_notes: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

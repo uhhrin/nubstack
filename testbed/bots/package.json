@@ -1,0 +1,11 @@
+{
+  "name": "nubstack-bots",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke": "node smoke.mjs"
+  },
+  "dependencies": {
+    "mineflayer": "^4.33.0"
+  }
+}

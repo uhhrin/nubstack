@@ -1,0 +1,132 @@
+# Local Velocity network: proxy + hub + minigame + Redis + MariaDB.
+# Join at localhost:25565 (offline mode for Mineflayer bots).
+#
+# Usage:
+#   ./gradlew build
+#   ./testbed/scripts/sync-plugins.sh
+#   docker compose -f testbed/docker-compose.yml up -d
+#   ./testbed/scripts/paste-lobbies.sh
+#   cd testbed/bots && npm install && npm run smoke
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [nubstack]
+
+  mariadb:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: nubstack
+      MARIADB_DATABASE: nubstack
+      MARIADB_USER: nubstack
+      MARIADB_PASSWORD: nubstack
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    networks: [nubstack]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  velocity:
+    image: itzg/mc-proxy:latest
+    restart: unless-stopped
+    depends_on:
+      - hub
+      - minigame
+    ports:
+      - "25565:25577"
+    environment:
+      TYPE: VELOCITY
+      MEMORY: 512M
+    volumes:
+      - ./velocity/velocity.toml:/config/velocity.toml:ro
+      - ./velocity/forwarding.secret:/config/forwarding.secret:ro
+      - ./plugins/velocity:/plugins:ro
+      - velocity-data:/server
+    networks: [nubstack]
+
+  hub:
+    image: itzg/minecraft-server:java25
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      EULA: "TRUE"
+      TYPE: PAPER
+      VERSION: "26.2"
+      ONLINE_MODE: "FALSE"
+      MEMORY: 2G
+      DIFFICULTY: peaceful
+      MODE: creative
+      LEVEL_TYPE: FLAT
+      SPAWN_PROTECTION: "0"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: nubstack
+      RCON_PORT: 25575
+      MODRINTH_PROJECTS: fastasyncworldedit
+      FORCE_GAMEMODE: "true"
+    volumes:
+      - hub-data:/data
+      - ./plugins/paper:/plugins:ro
+      - ./schematics:/schematics:ro
+      - ./paper/paper-global.yml:/data/config/paper-global.yml
+    networks: [nubstack]
+
+  minigame:
+    image: itzg/minecraft-server:java25
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      EULA: "TRUE"
+      TYPE: PAPER
+      VERSION: "26.2"
+      ONLINE_MODE: "FALSE"
+      MEMORY: 2G
+      DIFFICULTY: peaceful
+      MODE: adventure
+      LEVEL_TYPE: FLAT
+      SPAWN_PROTECTION: "0"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: nubstack
+      RCON_PORT: 25575
+      FORCE_GAMEMODE: "true"
+    volumes:
+      - minigame-data:/data
+      - ./plugins/paper:/plugins:ro
+      - ./schematics:/schematics:ro
+      - ./paper/paper-global.yml:/data/config/paper-global.yml
+    networks: [nubstack]
+
+  bots:
+    image: node:22-alpine
+    profiles: ["bots"]
+    working_dir: /bots
+    depends_on:
+      - velocity
+    environment:
+      PROXY_HOST: velocity
+      PROXY_PORT: "25577"
+    volumes:
+      - ./bots:/bots
+    command: ["sh", "-c", "npm install && npm run smoke"]
+    networks: [nubstack]
+
+networks:
+  nubstack:
+
+volumes:
+  velocity-data:
+  hub-data:
+  minigame-data:
+  mariadb-data:

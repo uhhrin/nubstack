@@ -41,7 +41,23 @@ Run writing-policy checks:
 ./scripts/check-writing-policy.sh
 ```
 
-Live multi-plugin testing on one server comes after these MVPs.
+## Local network (Docker)
+
+Velocity + hub + minigame + Redis + MariaDB, with Mineflayer smokes:
+
+```bash
+./gradlew build
+./testbed/scripts/sync-plugins.sh
+docker compose -f testbed/docker-compose.yml up -d
+./testbed/scripts/paste-lobbies.sh
+```
+
+See [testbed/README.md](testbed/README.md).
+
+## Releases
+
+Tag `nubstack-vX.Y.Z` (or run the `release` workflow) to build jars and attach
+them to a GitHub Release.
 
 ## License
 
