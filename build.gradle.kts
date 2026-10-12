@@ -41,7 +41,7 @@ subprojects {
     }
 
     dependencies {
-        "testImplementation"(platform("org.junit:junit-bom:5.11.4"))
+        "testImplementation"(platform("org.junit:junit-bom:6.1.3"))
         "testImplementation"("org.junit.jupiter:junit-jupiter")
         // Gradle 9+ test workers need the launcher on the runtime classpath.
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
