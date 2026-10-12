@@ -125,13 +125,16 @@ public final class SnapshotService {
                 throw new IOException(
                         "Insufficient disk space for snapshot (need " + totalBytes + " bytes, usable " + usable + ")");
             }
-            String slug = FORMAT.format(Instant.now()) + "-" + sanitize(worldName);
+            String baseSlug = FORMAT.format(Instant.now()) + "-" + sanitize(worldName);
             if (label != null && !label.isBlank()) {
-                slug = slug + "-" + sanitize(label);
+                baseSlug = baseSlug + "-" + sanitize(label);
             }
+            // Same-millisecond creates collide on fast CI; disambiguate instead of failing.
+            String slug = baseSlug;
             target = snapshotRoot.resolve(slug);
-            if (Files.exists(target)) {
-                throw new IOException("Snapshot path already exists: " + slug);
+            for (int n = 2; Files.exists(target); n++) {
+                slug = baseSlug + "-" + n;
+                target = snapshotRoot.resolve(slug);
             }
             copyRecursive(worldFolder, target, totalBytes, onProgress);
             writeMeta(target, worldName, label == null ? "" : label.trim(), Instant.now(), totalBytes);
