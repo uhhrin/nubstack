@@ -1,9 +1,24 @@
 #!/usr/bin/env bash
+# Wait for every running backend (hub, minigame, fabric), print plugin startup lines, and op players.
+# Usage: ./testbed/scripts/wait-and-op.sh [player ...]   (default: thatnubarin)
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-COMPOSE=(docker compose --profile minigame)
-PLAYER="${1:-thatnubarin}"
+COMPOSE=(docker compose --profile minigame --profile fabric)
+if [[ $# -gt 0 ]]; then
+  PLAYERS=("$@")
+else
+  PLAYERS=(thatnubarin)
+fi
+
+running_backends() {
+  local svc
+  for svc in hub minigame fabric; do
+    if "${COMPOSE[@]}" ps --status running --services 2>/dev/null | grep -qx "$svc"; then
+      echo "$svc"
+    fi
+  done
+}
 
 wait_rcon() {
   local service="$1"
@@ -19,22 +34,34 @@ wait_rcon() {
   return 1
 }
 
-echo "Waiting for hub and minigame..."
-wait_rcon hub
-wait_rcon minigame
+mapfile -t BACKENDS < <(running_backends)
+if [[ ${#BACKENDS[@]} -eq 0 ]]; then
+  echo "no backend is running; start the stack first (see testbed/README.md)" >&2
+  exit 1
+fi
 
-echo "=== hub plugin lines ==="
-"${COMPOSE[@]}" logs hub 2>&1 | rg -i 'Done \(|Error occurred|No suitable|enabled|aegis|ledger|loom|tether' | tail -40 || true
-echo "=== minigame plugin lines ==="
-"${COMPOSE[@]}" logs minigame 2>&1 | rg -i 'Done \(|Error occurred|No suitable|enabled|aegis|ledger|loom|tether' | tail -40 || true
+echo "Waiting for: ${BACKENDS[*]}"
+for service in "${BACKENDS[@]}"; do
+  wait_rcon "$service"
+done
+
+for service in "${BACKENDS[@]}"; do
+  echo "=== $service plugin lines ==="
+  "${COMPOSE[@]}" logs "$service" 2>&1 | grep -Ei 'Done \(|Error occurred|No suitable|enabled|loaded [0-9]+ grave|aegis|ledger|loom|tether|cairn' | tail -30 || true
+done
 echo "=== velocity ==="
-"${COMPOSE[@]}" logs velocity 2>&1 | rg -i 'Done|Loaded|ERROR|Could.t|enabled|AccessDenied|chown' | tail -30 || true
+"${COMPOSE[@]}" logs velocity 2>&1 | grep -Ei 'Done|Loaded|ERROR|Could.t|enabled|AccessDenied|chown' | tail -30 || true
 
-echo "=== op $PLAYER ==="
-"${COMPOSE[@]}" exec -T hub rcon-cli "op $PLAYER"
-"${COMPOSE[@]}" exec -T minigame rcon-cli "op $PLAYER"
-"${COMPOSE[@]}" exec -T hub cat /data/ops.json
-echo
-"${COMPOSE[@]}" exec -T minigame cat /data/ops.json
-echo
+for player in "${PLAYERS[@]}"; do
+  for service in "${BACKENDS[@]}"; do
+    echo "=== op $player on $service ==="
+    "${COMPOSE[@]}" exec -T "$service" rcon-cli "op $player"
+  done
+done
+
+for service in "${BACKENDS[@]}"; do
+  echo "=== $service ops.json ==="
+  "${COMPOSE[@]}" exec -T "$service" cat /data/ops.json
+  echo
+done
 "${COMPOSE[@]}" ps -a
