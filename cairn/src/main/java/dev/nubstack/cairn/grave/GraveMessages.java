@@ -68,6 +68,6 @@ public final class GraveMessages {
 
     public static Component helpText() {
         return Component.literal("cairn: /cairn locate | /cairn list | admin list [player] | admin tp <id>"
-                + " | admin clear <id|expired|all> | admin expire <id>");
+                + " | admin key <id> | admin clear <id|expired|all> | admin expire <id>");
     }
 }

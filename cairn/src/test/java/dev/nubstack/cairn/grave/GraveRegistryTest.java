@@ -92,6 +92,17 @@ class GraveRegistryTest {
     }
 
     @Test
+    void tickDimension_skipsGravesAlreadyDespawning() {
+        GraveRegistry registry = new GraveRegistry();
+        GraveRecord fading = newGrave("1", "minecraft:overworld", 1, 64, 1, 0)
+                .withDespawnAnim(GraveRecord.DESPAWN_ANIM_TICKS);
+        registry.add(fading);
+        assertTrue(registry.tickDimension("minecraft:overworld", 1).isEmpty());
+        assertTrue(registry.findById("1").isPresent());
+        assertEquals(GraveRecord.DESPAWN_ANIM_TICKS, registry.findById("1").get().despawnAnimTicks());
+    }
+
+    @Test
     void listForName_ignoresCase() {
         GraveRegistry registry = new GraveRegistry();
         registry.add(newGrave("1", "minecraft:overworld", 1, 64, 1, 10));
@@ -99,7 +110,23 @@ class GraveRegistryTest {
         assertTrue(registry.listForName("Alex").isEmpty());
     }
 
+    @Test
+    void findByEntity_andReplace_updateStacks() {
+        GraveRegistry registry = new GraveRegistry();
+        UUID interaction = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        UUID display = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        GraveRecord grave = new GraveRecord(
+                "1", OWNER, "Steve", "minecraft:overworld", 1, 64, 1, 10,
+                List.of("{id:\"minecraft:dirt\",count:1}"), interaction, display, 0);
+        registry.add(grave);
+        assertTrue(registry.findByEntity(interaction).isPresent());
+        assertTrue(registry.findByEntity(display).isPresent());
+        registry.replace(grave.withItems(List.of()).withDespawnAnim(GraveRecord.DESPAWN_ANIM_TICKS));
+        assertTrue(registry.findById("1").get().isEmpty());
+        assertTrue(registry.findById("1").get().isDespawning());
+    }
+
     private static GraveRecord newGrave(String id, String dimension, int x, int y, int z, int ticks) {
-        return new GraveRecord(id, OWNER, "Steve", dimension, x, y, z, ticks);
+        return new GraveRecord(id, OWNER, "Steve", dimension, x, y, z, ticks, List.of(), null, null, 0);
     }
 }

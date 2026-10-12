@@ -19,6 +19,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 
 final class CairnCommands {
 
@@ -39,6 +40,8 @@ final class CairnCommands {
                         .then(idArgument().executes(this::adminTp)))
                 .then(Commands.literal("expire")
                         .then(idArgument().executes(this::adminExpire)))
+                .then(Commands.literal("key")
+                        .then(idArgument().executes(this::adminKey)))
                 .then(Commands.literal("clear")
                         .then(Commands.argument("target", StringArgumentType.word())
                                 .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
@@ -114,7 +117,7 @@ final class CairnCommands {
         if (level == null) {
             return fail(ctx, "That grave's dimension is not loaded: " + target.dimension());
         }
-        // shortcut: stands one block above the chest without checking for headroom
+        // shortcut: stands one block above the grave without checking for headroom
         player.teleportTo(level, target.x() + 0.5, target.y() + 1.0, target.z() + 0.5,
                 Set.of(), player.getYRot(), player.getXRot(), true);
         return reply(ctx, Component.literal("Teleported to grave #" + target.id()));
@@ -128,12 +131,25 @@ final class CairnCommands {
         return reply(ctx, Component.literal("Grave #" + id + " expires on the next tick"));
     }
 
+    private int adminKey(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        String id = StringArgumentType.getString(ctx, "id");
+        ItemStack key = graves.reissueKey(id);
+        if (key.isEmpty()) {
+            return fail(ctx, "No grave with that id");
+        }
+        if (!player.getInventory().add(key)) {
+            player.drop(key, false);
+        }
+        return reply(ctx, Component.literal("Reissued key for grave #" + id));
+    }
+
     private int adminClear(CommandContext<CommandSourceStack> ctx) {
         String target = StringArgumentType.getString(ctx, "target");
         var server = ctx.getSource().getServer();
         if (target.equals("expired")) {
             int removed = graves.clearStale(server);
-            return reply(ctx, Component.literal("Forgot " + removed + " grave(s) with no chest left"));
+            return reply(ctx, Component.literal("Forgot " + removed + " grave(s) with no marker left"));
         }
         List<GraveRecord> targets;
         if (target.equals("all")) {
@@ -146,7 +162,7 @@ final class CairnCommands {
         }
         for (GraveRecord grave : targets) {
             graves.registry().remove(grave.id());
-            graves.release(server, grave);
+            graves.destroyNow(server, grave);
         }
         graves.save();
         return reply(ctx, Component.literal("Cleared " + targets.size() + " grave(s); items dropped"));

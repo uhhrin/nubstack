@@ -21,9 +21,36 @@ class GraveStoreTest {
     @Test
     void saveThenLoad_roundTrips() throws IOException {
         Path file = dir.resolve("graves.json");
-        GraveRecord grave = new GraveRecord("4", OWNER, "Steve", "minecraft:the_nether", 1, 70, -9, 1200);
+        UUID interaction = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        UUID display = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        GraveRecord grave = new GraveRecord(
+                "4",
+                OWNER,
+                "Steve",
+                "minecraft:the_nether",
+                1,
+                70,
+                -9,
+                1200,
+                List.of("{id:\"minecraft:dirt\",count:1}"),
+                interaction,
+                display,
+                0);
         GraveStore.save(file, List.of(grave));
         assertEquals(List.of(grave), GraveStore.load(file));
+    }
+
+    @Test
+    void legacyRecordWithoutItems_loadsEmptyStacks() throws IOException {
+        Path file = dir.resolve("graves.json");
+        Files.writeString(file, """
+                [{"id":"1","owner":"%s","ownerName":"Steve","dimension":"minecraft:overworld",\
+                "x":0,"y":64,"z":0,"ticksRemaining":100}]
+                """.formatted(OWNER));
+        List<GraveRecord> loaded = GraveStore.load(file);
+        assertEquals(1, loaded.size());
+        assertTrue(loaded.getFirst().itemsSnbt().isEmpty());
+        assertEquals(null, loaded.getFirst().interactionId());
     }
 
     @Test

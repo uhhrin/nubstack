@@ -47,6 +47,28 @@ public final class GraveRegistry {
         return Optional.ofNullable(byId.get(id));
     }
 
+    public Optional<GraveRecord> findByEntity(UUID entityId) {
+        Objects.requireNonNull(entityId, "entityId");
+        for (GraveRecord grave : byId.values()) {
+            if (entityId.equals(grave.interactionId()) || entityId.equals(grave.displayId())) {
+                return Optional.of(grave);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** Replaces an existing grave by id (location may stay the same). */
+    public void replace(GraveRecord record) {
+        Objects.requireNonNull(record, "record");
+        GraveRecord previous = byId.get(record.id());
+        if (previous == null) {
+            throw new IllegalArgumentException("unknown grave id: " + record.id());
+        }
+        byLocation.remove(previous.key());
+        byId.put(record.id(), record);
+        byLocation.put(record.key(), record.id());
+    }
+
     public List<GraveRecord> listFor(UUID ownerId) {
         Objects.requireNonNull(ownerId, "ownerId");
         return byId.values().stream().filter(grave -> grave.ownerId().equals(ownerId)).toList();
@@ -92,7 +114,7 @@ public final class GraveRegistry {
         List<GraveRecord> expired = new ArrayList<>();
         List<GraveRecord> updated = new ArrayList<>();
         for (GraveRecord grave : byId.values()) {
-            if (!grave.dimension().equals(dimension)) {
+            if (!grave.dimension().equals(dimension) || grave.isDespawning()) {
                 continue;
             }
             int left = grave.ticksRemaining() - ticks;

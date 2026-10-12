@@ -1,12 +1,10 @@
 package dev.nubstack.cairn;
 
-import dev.nubstack.cairn.grave.AccessMode;
-import dev.nubstack.cairn.grave.GraveRecord;
+import dev.nubstack.cairn.grave.GraveKeyItem;
 import dev.nubstack.cairn.grave.XpPolicy;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.api.DedicatedServerModInitializer;
@@ -16,16 +14,19 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Server-side death chests for vanilla clients.
+ * Server-side death graves for vanilla clients.
  */
 public final class CairnMod implements DedicatedServerModInitializer {
 
@@ -42,11 +43,10 @@ public final class CairnMod implements DedicatedServerModInitializer {
         CairnConfig config = loadConfig(configDir.resolve("cairn.json"));
         GraveManager graves = new GraveManager(config, configDir.resolve("cairn-graves.json"), LOGGER);
 
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> graves.load());
+        ServerLifecycleEvents.SERVER_STARTED.register(graves::load);
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> graves.save());
         ServerTickEvents.END_SERVER_TICK.register(graves::tick);
 
-        // Runs before vanilla drops, so moving the inventory here means nothing is dropped twice.
         ServerPlayerEvents.ALLOW_DEATH.register((player, source, amount) -> {
             if (player.level().getGameRules().get(GameRules.KEEP_INVENTORY)) {
                 return true;
@@ -64,15 +64,47 @@ public final class CairnMod implements DedicatedServerModInitializer {
                 newPlayer.experienceProgress = saved.progress();
                 newPlayer.totalExperience = saved.total();
             }
+            if (!alive) {
+                graves.deliverPendingKey(newPlayer);
+            }
         });
 
         UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
             if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
                 return InteractionResult.PASS;
             }
-            Optional<GraveRecord> grave = graves.graveAt(world, hit.getBlockPos(), world.getBlockState(hit.getBlockPos()));
-            if (grave.isPresent() && !mayAccess(config.accessMode(), grave.get(), serverPlayer)) {
-                serverPlayer.sendSystemMessage(Component.literal("This grave belongs to " + grave.get().ownerName()), true);
+            if (graves.tryOpenAt(serverPlayer, hit.getBlockPos())
+                    || graves.tryOpenAt(serverPlayer, hit.getBlockPos().relative(hit.getDirection()))) {
+                return InteractionResult.SUCCESS_SERVER;
+            }
+            if (GraveKeyItem.isGraveKey(serverPlayer.getItemInHand(hand))) {
+                return InteractionResult.FAIL;
+            }
+            return InteractionResult.PASS;
+        });
+        // Via / older clients often skip UseBlock on non-container blocks; key use still raycasts.
+        UseItemCallback.EVENT.register((player, world, hand) -> {
+            if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+                return InteractionResult.PASS;
+            }
+            if (!GraveKeyItem.isGraveKey(serverPlayer.getItemInHand(hand))) {
+                return InteractionResult.PASS;
+            }
+            HitResult hit = serverPlayer.pick(serverPlayer.blockInteractionRange(), 0.0F, false);
+            if (hit.getType() == HitResult.Type.BLOCK
+                    && graves.tryOpenAt(serverPlayer, ((BlockHitResult) hit).getBlockPos())) {
+                return InteractionResult.SUCCESS_SERVER;
+            }
+            return InteractionResult.FAIL;
+        });
+        UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
+            if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+                return InteractionResult.PASS;
+            }
+            if (graves.tryOpen(serverPlayer, entity)) {
+                return InteractionResult.SUCCESS_SERVER;
+            }
+            if (GraveKeyItem.isGraveKey(serverPlayer.getItemInHand(hand))) {
                 return InteractionResult.FAIL;
             }
             return InteractionResult.PASS;
@@ -81,16 +113,11 @@ public final class CairnMod implements DedicatedServerModInitializer {
             if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
                 return true;
             }
-            Optional<GraveRecord> grave = graves.graveAt(world, pos, state);
-            return grave.isEmpty() || mayAccess(config.accessMode(), grave.get(), serverPlayer);
-        });
-        PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
-            if (!world.isClientSide()) {
-                graves.graveAt(world, pos, state).ifPresent(grave -> {
-                    graves.registry().remove(grave.id());
-                    graves.save();
-                });
+            if (graves.isGraveMarker(world, pos)) {
+                // Admins may break to clear the marker; loot stays until expire/clear.
+                return GraveManager.isAdmin(serverPlayer);
             }
+            return true;
         });
 
         CommandRegistrationCallback.EVENT.register(
@@ -99,14 +126,9 @@ public final class CairnMod implements DedicatedServerModInitializer {
         LOGGER.info("cairn enabled");
     }
 
-    private static boolean mayAccess(AccessMode mode, GraveRecord grave, ServerPlayer player) {
-        return mode.allows(grave.ownerId(), player.getUUID(), GraveManager.isAdmin(player));
-    }
-
     private void keepExperience(ServerPlayer player) {
         keptExperience.put(player.getUUID(),
                 new Experience(player.experienceLevel, player.experienceProgress, player.totalExperience));
-        // vanilla drops orbs from the level, so zero it before drops run
         player.experienceLevel = 0;
         player.experienceProgress = 0;
         player.totalExperience = 0;

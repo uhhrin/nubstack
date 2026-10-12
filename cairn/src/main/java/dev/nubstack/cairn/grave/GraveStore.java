@@ -19,7 +19,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * JSON persistence for graves so chests are tracked across restarts.
+ * JSON persistence for graves across restarts.
  *
  * shortcut: one small file rewritten on every change from the server thread,
  * upgrade to async or per-world SavedData if grave counts grow large.
@@ -45,6 +45,18 @@ public final class GraveStore {
             json.addProperty("y", grave.y());
             json.addProperty("z", grave.z());
             json.addProperty("ticksRemaining", grave.ticksRemaining());
+            json.addProperty("despawnAnimTicks", grave.despawnAnimTicks());
+            if (grave.interactionId() != null) {
+                json.addProperty("interactionId", grave.interactionId().toString());
+            }
+            if (grave.displayId() != null) {
+                json.addProperty("displayId", grave.displayId().toString());
+            }
+            JsonArray items = new JsonArray();
+            for (String snbt : grave.itemsSnbt()) {
+                items.add(snbt);
+            }
+            json.add("items", items);
             array.add(json);
         }
         Path parent = file.toAbsolutePath().getParent();
@@ -69,6 +81,12 @@ public final class GraveStore {
             List<GraveRecord> graves = new ArrayList<>();
             for (JsonElement element : JsonParser.parseReader(reader).getAsJsonArray()) {
                 JsonObject json = element.getAsJsonObject();
+                List<String> items = new ArrayList<>();
+                if (json.has("items") && json.get("items").isJsonArray()) {
+                    for (JsonElement item : json.getAsJsonArray("items")) {
+                        items.add(item.getAsString());
+                    }
+                }
                 graves.add(new GraveRecord(
                         json.get("id").getAsString(),
                         UUID.fromString(json.get("owner").getAsString()),
@@ -77,7 +95,11 @@ public final class GraveStore {
                         json.get("x").getAsInt(),
                         json.get("y").getAsInt(),
                         json.get("z").getAsInt(),
-                        json.get("ticksRemaining").getAsInt()));
+                        json.get("ticksRemaining").getAsInt(),
+                        items,
+                        readUuid(json, "interactionId"),
+                        readUuid(json, "displayId"),
+                        json.has("despawnAnimTicks") ? json.get("despawnAnimTicks").getAsInt() : 0));
             }
             return List.copyOf(graves);
         } catch (JsonParseException | IllegalStateException | NullPointerException | IllegalArgumentException
@@ -85,5 +107,12 @@ public final class GraveStore {
             Files.move(file, file.resolveSibling(file.getFileName() + ".corrupt"), StandardCopyOption.REPLACE_EXISTING);
             return List.of();
         }
+    }
+
+    private static UUID readUuid(JsonObject json, String key) {
+        if (!json.has(key) || json.get(key).isJsonNull()) {
+            return null;
+        }
+        return UUID.fromString(json.get(key).getAsString());
     }
 }

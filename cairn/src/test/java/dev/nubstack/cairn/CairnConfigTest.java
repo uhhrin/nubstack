@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.nubstack.cairn.grave.AccessMode;
 import dev.nubstack.cairn.grave.XpPolicy;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,9 +23,10 @@ class CairnConfigTest {
         assertTrue(Files.exists(file));
         assertEquals(15, config.expireMinutes());
         assertEquals(3, config.maxGravesPerPlayer());
-        assertEquals(AccessMode.OWNER, config.accessMode());
         assertEquals(XpPolicy.DROP, config.xpPolicy());
         assertEquals(15 * 60 * 20, config.expireTicks());
+        String written = Files.readString(file);
+        assertTrue(!written.contains("accessMode"));
     }
 
     @Test
@@ -35,7 +35,6 @@ class CairnConfigTest {
         Files.writeString(file, "{\"expireMinutes\":30,\"accessMode\":\"public\",\"xpPolicy\":\"keep\"}");
         CairnConfig config = CairnConfig.loadOrCreate(file);
         assertEquals(30, config.expireMinutes());
-        assertEquals(AccessMode.PUBLIC, config.accessMode());
         assertEquals(XpPolicy.KEEP, config.xpPolicy());
         assertEquals(3, config.maxGravesPerPlayer());
     }
@@ -51,9 +50,9 @@ class CairnConfigTest {
     }
 
     @Test
-    void invalidEnum_failsLoudly() throws IOException {
+    void invalidXpPolicy_failsLoudly() throws IOException {
         Path file = dir.resolve("cairn.json");
-        Files.writeString(file, "{\"accessMode\":\"friends\"}");
+        Files.writeString(file, "{\"xpPolicy\":\"friends\"}");
         assertThrows(IllegalArgumentException.class, () -> CairnConfig.loadOrCreate(file));
     }
 

@@ -77,7 +77,8 @@ class GraveMessagesTest {
 
     @Test
     void graveLine_showsIdPlaceTimeAndCopy_adminsAlsoGetOwnerAndTp() {
-        GraveRecord grave = new GraveRecord("3", OWNER, "Steve", "minecraft:overworld", 12, 64, -40, 20 * 60 * 5);
+        GraveRecord grave = new GraveRecord(
+                "3", OWNER, "Steve", "minecraft:overworld", 12, 64, -40, 20 * 60 * 5, List.of(), null, null, 0);
         String player = GraveMessages.graveLine(grave, false).getString();
         assertTrue(player.contains("#3"));
         assertTrue(player.contains("minecraft:overworld"));
@@ -95,7 +96,8 @@ class GraveMessagesTest {
     @Test
     void helpText_listsEveryCommandPath() {
         String help = GraveMessages.helpText().getString();
-        for (String part : List.of("/cairn locate", "/cairn list", "admin list", "admin tp", "admin clear", "admin expire")) {
+        for (String part : List.of(
+                "/cairn locate", "/cairn list", "admin list", "admin tp", "admin key", "admin clear", "admin expire")) {
             assertTrue(help.contains(part), part);
         }
     }

@@ -1,25 +1,30 @@
 # cairn
 
-Fabric server-side death chests for vanilla clients. When a player dies, their
-inventory goes into a chest (a double chest if needed) at or near the death
-position, and the player gets the coordinates with a click-to-copy button.
+Fabric server-side death graves for vanilla clients. When a player dies, their
+inventory is stored in a grave marker (Interaction + Item Display with a custom
+model) at or near the death position. They receive a transferable **grave key**
+that opens that grave. When the grave is emptied, it despawns with a short
+soul particle animation.
 
 Who it is for: players who die far from home and need to find and recover their
 items without a client mod, and admins who need to locate or clean up graves.
 
 ## Features
 
-- Inventory moves into a grave chest before vanilla drops run, so nothing is duplicated
-- Double chest when the inventory needs more than 27 slots; anything beyond 54 stacks drops on the ground
+- Inventory moves into a grave before vanilla drops run, so nothing is duplicated
+- Up to 54 stacks stored on the grave; anything beyond that drops on the ground
+- Grave marker is a barrel (loot is virtual, not in the block; break is blocked for non-admins)
+- Transferable grave key on death; only the matching key (or an admin) can open
 - Finds air near the death position (above, below, then a small ring around it). If none exists, items drop normally
 - Graves are tracked per dimension, so a Nether or End grave never touches the overworld
-- Graves are saved to disk and survive restarts, with their remaining time
-- Expiry drops the items, removes the chest and whispers the owner "Grave expired; items dropped"
-- Owner-only access until expiry (configurable), admins can always open
+- Graves (including remaining items) are saved to disk and survive restarts
+- Expiry drops the items, plays the despawn animation, and whispers the owner "Grave expired; items dropped"
+- Empty graves despawn with particles and sound; matching keys are removed from online inventories
 - Maximum graves per player; the oldest is released (items dropped) when the limit is exceeded
 - Death message with dimension and a clickable `[Copy coords]` button (`12 64 -40`); admins also get a clickable `[Tp]`
 - `keepInventory` on means cairn does nothing
 - Optional experience policy
+- Legacy chest graves from older cairn builds are migrated once on load
 
 ## Requirements
 
@@ -29,8 +34,19 @@ items without a client mod, and admins who need to locate or clean up graves.
 | Minecraft | 26.2 |
 | Java | 25 |
 | Dependencies | Fabric Loader and Fabric API (see `fabric.mod.json`) |
+| Resource pack | `cairn/resourcepack/` (or `cairn-resourcepack.zip`) for custom grave/key models |
 
-Not loaded by the Paper/Velocity Docker testbed.
+Local testbed: start the Fabric profile, then `/server cairn` from the hub:
+
+```bash
+./testbed/scripts/sync-plugins.sh
+docker compose -f testbed/docker-compose.yml --profile fabric up -d
+```
+
+A prebuilt pack is at `testbed/resourcepacks/cairn-resourcepack.zip` (source:
+`cairn/resourcepack/`). The local Fabric testbed forces this pack on join via
+`server.properties` (`RESOURCE_PACK` + `RESOURCE_PACK_ENFORCE`), served from the
+docs nginx URL. Without the pack, clients still see a stone / trial-key placeholder.
 
 ## Install
 
@@ -42,65 +58,67 @@ Not loaded by the Paper/Velocity Docker testbed.
 
 2. Install Fabric Loader + Fabric API on a dedicated server for Minecraft 26.2.
 3. Copy the cairn jar into the server `mods/` folder.
-4. Restart the server. `config/cairn.json` is created with defaults on first start.
+4. Copy or zip `cairn/resourcepack/` and install it as a resource pack (client or forced server pack).
+5. Restart the server. `config/cairn.json` is created with defaults on first start.
 
 ## Configuration
 
 `config/cairn.json` is read once at startup. Missing keys use the default. A file that is not valid JSON, or an
-unknown `accessMode` or `xpPolicy`, is logged and cairn runs with defaults.
+unknown `xpPolicy`, is logged and cairn runs with defaults.
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `expireMinutes` | integer (>= 1) | `15` | Minutes until a grave expires and its items drop |
 | `maxGravesPerPlayer` | integer (>= 1) | `3` | Oldest grave is released when a new one exceeds this |
-| `accessMode` | `owner` or `public` | `owner` | `owner`: only the owner and admins can open or break the grave. `public`: anyone can |
 | `xpPolicy` | `drop` or `keep` | `drop` | `drop`: vanilla experience orbs at the death spot. `keep`: the player respawns with their experience |
 | `searchRadius` | integer (0 to 16) | `6` | Horizontal rings searched for free air when the death block is taken |
+
+`accessMode` from older configs is ignored. Access is always key-gated (admins bypass).
 
 Grave state is stored in `config/cairn-graves.json`. Do not edit it while the server runs. An unreadable file is
 renamed to `cairn-graves.json.corrupt` and cairn starts with no graves.
 
 ## Commands
 
-| Command | Who | Description |
+| Command | Who | Effect |
 | --- | --- | --- |
-| `/cairn` | everyone | Short help |
+| `/cairn` | anyone | Help text |
 | `/cairn locate` | players | Your most recent grave: id, dimension, coordinates, time left, copy button |
 | `/cairn list` | players | All your graves |
 | `/cairn admin list [player]` | level 2 | All graves, or those of one owner (by name, any case) |
 | `/cairn admin tp <id>` | level 2 | Teleport to a grave, across dimensions |
+| `/cairn admin key <id>` | level 2 | Reissue a transferable key for a grave (lost-key recovery) |
 | `/cairn admin expire <id>` | level 2 | Expire a grave on the next tick, same as a natural expiry |
-| `/cairn admin clear <id\|expired\|all>` | level 2 | `id` or `all`: remove the chest and drop its items without telling the owner. `expired`: forget graves whose chest no longer exists |
-
-Admin commands need permission level 2 (game master). There are no Bukkit-style permission nodes.
+| `/cairn admin clear <id\|expired\|all>` | level 2 | `id` or `all`: remove the marker and drop its items without telling the owner. `expired`: forget graves whose marker no longer exists |
 
 ## Permissions
 
-| Action | Default |
+| Action | Requirement |
 | --- | --- |
-| `/cairn`, `/cairn locate`, `/cairn list` | everyone |
-| `/cairn admin ...` | permission level 2 |
-| Open or break another player's grave in `owner` mode | permission level 2 |
+| Open any grave without a key | permission level 2 |
+| Admin subcommands | permission level 2 (`Commands.LEVEL_GAMEMASTERS`) |
 
-## Examples
+## Example
 
-```text
+```
 Your grave was placed at 12 64 -40 in minecraft:overworld [Copy coords]
-#3 12 64 -40 in minecraft:overworld, 11m left [Copy coords]
 ```
 
-Admin view adds the owner and a `[Tp]` button that runs `/cairn admin tp 3`.
+Hold the Grave Key in main or off hand, then right-click the grave marker to open it.
+Hand the key to a friend if you want them to recover your items.
 
-## Status
+## Testing and limitations
 
-Unit tested (grave planning, registry, persistence, config, chat components). Not yet exercised on a live Fabric
-server. Known limitations:
+Unit tested (grave planning, registry, persistence, config, chat components, key helpers). Live Fabric
+scenarios are covered separately by the testbed Mineflayer suite when present.
 
-- Only breaking and opening are protected. Explosions, pistons and hoppers are not
-- Breaking one half of a double grave ends tracking; the other half stays as an ordinary chest with its items
+- Graves are entities; if something deletes them, `/cairn admin clear expired` drops leftover loot and forgets the record
 - Vanishing-cursed items are stored in the grave instead of being destroyed
 - `xpPolicy: keep` holds the experience in memory until respawn, so a restart while a player is on the death screen loses it
 - Expiry loads the grave's chunk on the server thread; graves are saved on the server thread
-- `/cairn admin tp` stands one block above the chest without checking headroom
+- `/cairn admin tp` stands one block above the grave without checking headroom
 - Items are moved before any later death-cancelling mod runs, so a mod that cancels the death after cairn leaves the items in the grave
+- Transferable keys mean anyone who holds a key can open that grave
+- Without the resource pack, the display uses a plain stone item and the key uses a trial key
+- Grave keys are not placeable (block/entity use is cancelled) so the key NBT cannot be stripped
 - Not done: action bar near your own grave, recovery compass, death cause in chat, metrics

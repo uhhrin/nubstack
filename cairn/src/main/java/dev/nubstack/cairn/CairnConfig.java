@@ -6,7 +6,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
-import dev.nubstack.cairn.grave.AccessMode;
 import dev.nubstack.cairn.grave.XpPolicy;
 import java.io.IOException;
 import java.io.Reader;
@@ -22,7 +21,6 @@ public final class CairnConfig {
 
     private int expireMinutes = 15;
     private int maxGravesPerPlayer = 3;
-    private AccessMode accessMode = AccessMode.OWNER;
     private XpPolicy xpPolicy = XpPolicy.DROP;
     private int searchRadius = 6;
 
@@ -36,10 +34,6 @@ public final class CairnConfig {
 
     public int maxGravesPerPlayer() {
         return maxGravesPerPlayer;
-    }
-
-    public AccessMode accessMode() {
-        return accessMode;
     }
 
     public XpPolicy xpPolicy() {
@@ -67,9 +61,7 @@ public final class CairnConfig {
         config.expireMinutes = Math.max(1, readInt(json, "expireMinutes", config.expireMinutes));
         config.maxGravesPerPlayer = Math.max(1, readInt(json, "maxGravesPerPlayer", config.maxGravesPerPlayer));
         config.searchRadius = Math.min(MAX_SEARCH_RADIUS, Math.max(0, readInt(json, "searchRadius", config.searchRadius)));
-        if (json.has("accessMode")) {
-            config.accessMode = AccessMode.parse(json.get("accessMode").getAsString());
-        }
+        // accessMode is ignored; graves open with a transferable key (admins bypass)
         if (json.has("xpPolicy")) {
             config.xpPolicy = XpPolicy.parse(json.get("xpPolicy").getAsString());
         }
@@ -94,7 +86,6 @@ public final class CairnConfig {
         JsonObject json = new JsonObject();
         json.addProperty("expireMinutes", expireMinutes);
         json.addProperty("maxGravesPerPlayer", maxGravesPerPlayer);
-        json.addProperty("accessMode", accessMode.configName());
         json.addProperty("xpPolicy", xpPolicy.configName());
         json.addProperty("searchRadius", searchRadius);
         try (Writer writer = Files.newBufferedWriter(path)) {
