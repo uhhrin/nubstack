@@ -181,6 +181,7 @@ seeded from `plugin-config/velocity/luckperms/`): `Bot1` is `staff`
 
 GitHub Actions workflow `.github/workflows/release.yml`:
 
-- Tag `nubstack-v0.1.0` builds every module and attaches jars to a Release
+- Merge to `main` builds every module and attaches jars to a Release
+- Tag `nubstack-v0.1.0` does the same from that tag
 - Tag `aegis-paper-v0.1.0` builds a single module
 - Or use Actions -> release -> Run workflow

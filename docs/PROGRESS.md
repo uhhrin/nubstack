@@ -43,8 +43,8 @@ Build wrapper for machines with an old default JDK:
 1. **Bootstrap** (`00120e4`): monorepo layout, Gradle, constitution/rules, license,
    writing-policy script, contributing notes.
 2. **spine** (`013fc13`): shared YAML, Hikari, Redis, MiniMessage helpers + tests.
-3. **aegis** (`26c9d23`): Paper + Velocity moderation MVP with SQL audit and Redis.
-4. **Remaining plugin MVPs** (`045ce03`): harbor, gatekeep, loom, spotlight, cull,
+3. **aegis** (`26c9d23`): Paper + Velocity moderation with SQL audit and Redis.
+4. **Remaining plugins** (`045ce03`): harbor, gatekeep, loom, spotlight, cull,
    ledger, amber, tether, cairn (Fabric).
 5. **CI + first testbed** (`de153a8`): GitHub Release workflow; Velocity + Paper
    Compose; Mineflayer smoke scaffold; schematics attempt.
@@ -56,22 +56,19 @@ Build wrapper for machines with an old default JDK:
 
 ## What each module does
 
-| Module | Status | Notes |
-| --- | --- | --- |
-| `spine` | library, tested | Used by SQL/Redis plugins |
-| `aegis-*` | MVP | Ban/mute/warn/history; Paper + Velocity; PRD/architecture under `aegis/docs/` |
-| `harbor` | MVP | Velocity queues + health |
-| `gatekeep` | MVP | Velocity connect rate limit |
-| `loom` | MVP | Cross-server inventory; needs two Papers to prove |
-| `spotlight` | MVP | Chunk lag scan command |
-| `cull` | MVP | Per-chunk mob cap |
-| `ledger` | MVP | `/bal`, `/pay`, `/ledger give` |
-| `amber` | MVP | World snapshot + list |
-| `tether` | MVP | Discord link/bridge; idle without bot token |
-| `cairn` | MVP | Fabric death graves (key + display); Fabric testbed profile |
-
-Honest limitation: these are showcase MVPs. They are not claimed as
-production-complete, fully live-verified product suites.
+| Module | Notes |
+| --- | --- |
+| `spine` | Shared library; used by SQL/Redis plugins |
+| `aegis-*` | Ban/mute/warn/history; Paper + Velocity; PRD/architecture under `aegis/docs/` |
+| `harbor` | Velocity queues + health |
+| `gatekeep` | Velocity connect rate limit |
+| `loom` | Cross-server inventory; needs two Papers to prove |
+| `spotlight` | Chunk lag scan command |
+| `cull` | Per-chunk mob cap |
+| `ledger` | `/bal`, `/pay`, `/ledger give` |
+| `amber` | World snapshot + list |
+| `tether` | Discord link/bridge; idle without bot token |
+| `cairn` | Fabric death graves (key-gated barrel marker); Fabric testbed profile |
 
 ## Local Docker network
 
@@ -121,8 +118,9 @@ PROXY_HOST=127.0.0.1 PROXY_PORT=25565 BOT_COUNT=3 npm run smoke
 ## Releases
 
 `.github/workflows/release.yml` builds jars and attaches them to GitHub Releases
-on version tags such as `nubstack-vX.Y.Z` or module tags like `aegis-paper-vX.Y.Z`,
-or via workflow_dispatch.
+on push to `main` (all modules), on version tags such as `nubstack-vX.Y.Z` or
+module tags like `aegis-paper-vX.Y.Z`, or via workflow_dispatch when the tag
+already exists.
 
 ## Runtime fixes discovered while testing Docker
 
@@ -157,10 +155,11 @@ or via workflow_dispatch.
   full VIP/staff queue demos.
 - Plugin JDBC defaults in jars still use `localhost` / `change-me` for non-Docker
   installs; Docker is covered by `plugin-config/`.
-- Cairn is Fabric-only and not exercised by the Velocity/Paper Compose stack.
-- Mineflayer smoke only proves join/spawn; it does not automate plugin commands.
-- Many MVP paths are unit-tested; not every command has a full live integration
-  suite beyond manual and smoke checks.
+- Cairn is Fabric-only (`--profile fabric`); Paper Compose alone does not run it.
+- Mineflayer scenarios cover many plugin commands; some paths (grave key click,
+  Discord link) stay manual.
+- Unit tests cover a lot of plugin logic; not every command has a full live
+  integration assertion beyond the bot suite and manual checks.
 
 ## Branch note
 

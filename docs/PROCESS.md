@@ -46,7 +46,7 @@ configuration (types/defaults), commands, permissions, and short examples.
 5. Update the module (or product) README (features, install, config, commands,
    permissions, examples).
 6. Confirm `./gradlew build` and `./scripts/check-writing-policy.sh`.
-7. Tag a release so CI attaches the jar.
+7. Merge to `main` (or push a version tag) so CI attaches the jar.
 8. Mark the plugin status in the root README.
 
 ## Definition of done

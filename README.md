@@ -19,18 +19,18 @@ has a README with features, install, config, commands, and permissions.
 `aegis/` is the product docs umbrella for the `aegis-paper` / `aegis-velocity`
 jars (same monorepo, not a second repository).
 
-| Plugin | Platform | Status | Description |
-| --- | --- | --- | --- |
-| [aegis](aegis/) | Paper + Velocity | mvp | Network bans, mutes, warnings, audit log, Discord webhooks |
-| [harbor](harbor/) | Velocity | mvp | Priority queues and backend health routing |
-| [loom](loom/) | Paper | mvp | Cross-server inventory sync with transfer locks |
-| [spotlight](spotlight/) | Paper | mvp | Lag attribution by chunk, entity, and hopper cost |
-| [gatekeep](gatekeep/) | Velocity | mvp | Connection throttling by address |
-| [ledger](ledger/) | Paper | mvp | Vault-compatible economy with a transaction ledger |
-| [cull](cull/) | Paper | mvp | Per-chunk mob limits and cleanup |
-| [amber](amber/) | Paper | mvp | Async world snapshots with retention |
-| [tether](tether/) | Paper | mvp | Discord account linking and chat bridge |
-| [cairn](cairn/) | Fabric | mvp | Server-side death chests for vanilla clients |
+| Plugin | Platform | Description |
+| --- | --- | --- |
+| [aegis](aegis/) | Paper + Velocity | Network bans, mutes, warnings, audit log, Discord webhooks |
+| [harbor](harbor/) | Velocity | Priority queues and backend health routing |
+| [loom](loom/) | Paper | Cross-server inventory sync with transfer locks |
+| [spotlight](spotlight/) | Paper | Lag attribution by chunk, entity, and hopper cost |
+| [gatekeep](gatekeep/) | Velocity | Connection throttling by address |
+| [ledger](ledger/) | Paper | Vault-compatible economy with a transaction ledger |
+| [cull](cull/) | Paper | Per-chunk mob limits and cleanup |
+| [amber](amber/) | Paper | Async world snapshots with retention |
+| [tether](tether/) | Paper | Discord account linking and chat bridge |
+| [cairn](cairn/) | Fabric | Server-side death graves with transferable keys |
 
 ## Build
 
@@ -73,8 +73,10 @@ docker compose -f testbed/docker-compose.yml --profile minigame up -d
 
 ## Releases
 
-Tag `nubstack-vX.Y.Z` (or run the `release` workflow) to build jars and attach
-them to a GitHub Release.
+Merging to `main` builds every module jar and attaches them to a GitHub Release
+(`nubstack-vX.Y.Z` from `gradle.properties`, or `nubstack-vX.Y.Z.<run>` if that
+tag already exists). You can still push a tag such as `cairn-v0.1.0` for a single
+module, or run the `release` workflow manually.
 
 ## License
 
