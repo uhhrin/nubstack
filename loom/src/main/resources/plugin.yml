@@ -3,13 +3,16 @@ version: ${version}
 main: dev.nubstack.loom.LoomPlugin
 api-version: '26.2'
 authors: [nubstack]
-description: Cross-server player data sync
+description: Cross-server player inventory sync
 commands:
   loom:
-    description: loom command
+    description: Inventory sync tools for staff
+    usage: /loom [help|status|unlock|inspect|force-save|reload]
     permission: loom.use
 permissions:
   loom.use:
-    default: op
+    description: Run /loom (non-staff only see that sync is automatic)
+    default: true
   loom.admin:
+    description: Use /loom status, unlock, inspect, force-save and reload
     default: op

@@ -6,13 +6,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class ModerationService {
+
+    public static final int HISTORY_PAGE_SIZE = 8;
 
     private final PunishmentRepository repository;
     private final PunishmentCache cache;
     private final PunishmentBroadcaster broadcaster;
-    private final WebhookNotifier webhookNotifier;
+    private final AtomicReference<WebhookNotifier> webhookNotifier;
 
     public ModerationService(
             PunishmentRepository repository,
@@ -22,7 +25,11 @@ public final class ModerationService {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.cache = Objects.requireNonNull(cache, "cache");
         this.broadcaster = Objects.requireNonNull(broadcaster, "broadcaster");
-        this.webhookNotifier = Objects.requireNonNull(webhookNotifier, "webhookNotifier");
+        this.webhookNotifier = new AtomicReference<>(Objects.requireNonNull(webhookNotifier, "webhookNotifier"));
+    }
+
+    public void replaceWebhook(WebhookNotifier next) {
+        webhookNotifier.set(Objects.requireNonNull(next, "next"));
     }
 
     public void loadCache() {
@@ -70,7 +77,7 @@ public final class ModerationService {
         cache.put(punishment);
         PunishmentEvent event = PunishmentEvent.created(punishment);
         broadcaster.publish(event);
-        webhookNotifier.notifyPunishment(punishment);
+        webhookNotifier.get().notifyPunishment(punishment);
         return punishment;
     }
 
@@ -86,6 +93,29 @@ public final class ModerationService {
         return changed;
     }
 
+    public boolean rollback(UUID punishmentId, UUID staffId) {
+        Objects.requireNonNull(punishmentId, "punishmentId");
+        Objects.requireNonNull(staffId, "staffId");
+        Optional<Punishment> existing = repository.findById(punishmentId);
+        if (existing.isEmpty()) {
+            return false;
+        }
+        Punishment row = existing.get();
+        if (row.type() == PunishmentType.WARN) {
+            throw new IllegalArgumentException("WARN rows cannot be rolled back");
+        }
+        boolean changed = repository.deactivateById(punishmentId, staffId);
+        if (changed) {
+            cache.remove(row.targetId(), row.type());
+            broadcaster.publish(PunishmentEvent.revoked(row.targetId(), row.type(), row));
+        }
+        return changed;
+    }
+
+    public Optional<Punishment> findById(UUID punishmentId) {
+        return repository.findById(punishmentId);
+    }
+
     public Optional<Punishment> activeBan(UUID targetId) {
         return cache.get(targetId, PunishmentType.BAN)
                 .or(() -> refreshActive(targetId, PunishmentType.BAN));
@@ -96,8 +126,31 @@ public final class ModerationService {
                 .or(() -> refreshActive(targetId, PunishmentType.MUTE));
     }
 
+    public List<Punishment> check(UUID targetId) {
+        Instant now = Instant.now();
+        return repository.findActiveForTarget(targetId).stream()
+                .filter(row -> row.isEffective(now))
+                .toList();
+    }
+
+    /** Active punishments for a target (same as {@link #check}). */
+    public List<Punishment> activeFor(UUID targetId) {
+        return check(targetId);
+    }
+
     public List<Punishment> history(UUID targetId, int limit) {
-        return repository.history(targetId, limit);
+        return repository.history(targetId, limit, 0);
+    }
+
+    public List<Punishment> historyPage(UUID targetId, int page) {
+        return historyPage(targetId, page, HISTORY_PAGE_SIZE);
+    }
+
+    public List<Punishment> historyPage(UUID targetId, int page, int pageSize) {
+        int size = pageSize < 1 ? HISTORY_PAGE_SIZE : pageSize;
+        int safePage = Math.max(1, page);
+        int offset = (safePage - 1) * size;
+        return repository.history(targetId, size, offset);
     }
 
     public void applyRemote(PunishmentEvent event) {
@@ -111,6 +164,7 @@ public final class ModerationService {
     }
 
     private Optional<Punishment> refreshActive(UUID targetId, PunishmentType type) {
+        // shortcut: after a Redis drop, cache may miss until the next local check hits SQL
         Optional<Punishment> found = repository.findActive(targetId, type)
                 .filter(punishment -> punishment.isEffective(Instant.now()));
         found.ifPresent(cache::put);

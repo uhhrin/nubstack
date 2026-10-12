@@ -1,2 +1,11 @@
+# Score per signal in a loaded chunk. Higher means more suspicious.
 entity-weight: 1
 hopper-weight: 8
+minecart-weight: 4
+redstone-weight: 2
+item-frame-weight: 3
+villager-weight: 5
+# How many loaded chunks to score per server tick during a scan.
+chunks-per-tick: 32
+# Default number of results for /spotlight scan.
+default-limit: 10

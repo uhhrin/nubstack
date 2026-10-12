@@ -15,3 +15,20 @@ discord:
 messages:
   banned: "<red>You are banned: <reason></red>"
   muted: "<red>You are muted: <reason></red>"
+
+appeal:
+  copy-text: "Appeal code: <code>"
+
+rules-command: "/rules"
+staff-cooldown-ms: 1500
+
+history:
+  page-size: 8
+
+aliases:
+  gban: true
+  gmute: true
+  gunban: true
+  gwarn: true
+  hist: true
+  checkpunish: true

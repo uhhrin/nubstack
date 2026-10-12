@@ -1,13 +1,10 @@
-
 package dev.nubstack.harbor;
 
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
-import java.util.Optional;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 
 public final class HarborListener {
 
@@ -19,23 +16,40 @@ public final class HarborListener {
 
     @Subscribe
     public void onPreConnect(ServerPreConnectEvent event) {
-        RegisteredServer target = event.getOriginalServer();
-        String name = target.getServerInfo().getName();
-        if (plugin.health().isAvailable(name)) {
-            Optional<QueueEntry> next = plugin.queues().poll(name);
-            if (next.isPresent() && !next.get().playerId().equals(event.getPlayer().getUniqueId())) {
-                // put back if we stole someone else's slot accidentally
-                plugin.queues().enqueue(name, next.get());
-            }
+        if (plugin.consumeBypass(event.getPlayer().getUniqueId())) {
             return;
         }
+        RegisteredServer target = event.getOriginalServer();
+        String name = target.getServerInfo().getName();
+        if (plugin.queues().isPaused(name)) {
+            queueAndDeny(event, name);
+            return;
+        }
+        if (plugin.health().isAvailable(name)) {
+            plugin.queues().leave(event.getPlayer().getUniqueId());
+            plugin.clearBossBar(event.getPlayer());
+            return;
+        }
+        queueAndDeny(event, name);
+    }
+
+    @Subscribe
+    public void onDisconnect(DisconnectEvent event) {
         Player player = event.getPlayer();
-        plugin.queues().enqueue(name, plugin.queues().entry(
-                player.getUniqueId(), player.getUsername(), plugin.priorityFor(player)));
-        int position = plugin.queues().position(name, player.getUniqueId());
+        plugin.queues().leave(player.getUniqueId());
+        plugin.clearBossBar(player);
+    }
+
+    private void queueAndDeny(ServerPreConnectEvent event, String name) {
+        Player player = event.getPlayer();
+        QueueManager.EnqueueResult result = plugin.queues().enqueue(
+                name,
+                plugin.queues().entry(player.getUniqueId(), player.getUsername(), plugin.priorityFor(player)));
         event.setResult(ServerPreConnectEvent.ServerResult.denied());
-        player.sendMessage(Component.text(
-                "Server busy. Queued for " + name + " at position #" + position,
-                NamedTextColor.YELLOW));
+        if (result == QueueManager.EnqueueResult.FULL) {
+            player.sendMessage(HarborTexts.queueFull(name));
+            return;
+        }
+        plugin.showQueued(player, name);
     }
 }

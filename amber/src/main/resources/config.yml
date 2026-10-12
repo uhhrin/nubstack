@@ -1,4 +1,11 @@
-
+# Directory for snapshots, relative to this plugin's data folder.
 snapshot-dir: snapshots
+# How many snapshots to keep. Minimum 1. Applied after every snapshot and by /amber prune.
 retain: 5
+# World used by /amber snapshot when no world is given, and where players are moved on restore.
 default-world: world
+# Extra file or folder names to skip while copying. session.lock is always skipped.
+exclude: []
+# true: move players out of a world being restored to default-world's spawn.
+# false: refuse to restore while anyone is in that world.
+move-players-on-restore: true

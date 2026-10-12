@@ -1,100 +1,123 @@
 package dev.nubstack.cairn;
 
+import dev.nubstack.cairn.grave.AccessMode;
+import dev.nubstack.cairn.grave.GraveRecord;
+import dev.nubstack.cairn.grave.XpPolicy;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.api.DedicatedServerModInitializer;
-import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.core.BlockPos;
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.gamerules.GameRules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
  * Server-side death chests for vanilla clients.
- *
- * shortcut: graves are tracked only in the overworld tick path, upgrade when
- * multi-world grave expiry is required.
  */
 public final class CairnMod implements DedicatedServerModInitializer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("cairn");
-    private static final int EXPIRE_TICKS = 20 * 60 * 15;
-    private final Map<BlockPos, Integer> graves = new ConcurrentHashMap<>();
+
+    private record Experience(int level, float progress, int total) {
+    }
+
+    private final Map<UUID, Experience> keptExperience = new ConcurrentHashMap<>();
 
     @Override
     public void onInitializeServer() {
-        ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
-            if (!(entity instanceof ServerPlayer player)) {
-                return;
+        Path configDir = FabricLoader.getInstance().getConfigDir();
+        CairnConfig config = loadConfig(configDir.resolve("cairn.json"));
+        GraveManager graves = new GraveManager(config, configDir.resolve("cairn-graves.json"), LOGGER);
+
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> graves.load());
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> graves.save());
+        ServerTickEvents.END_SERVER_TICK.register(graves::tick);
+
+        // Runs before vanilla drops, so moving the inventory here means nothing is dropped twice.
+        ServerPlayerEvents.ALLOW_DEATH.register((player, source, amount) -> {
+            if (player.level().getGameRules().get(GameRules.KEEP_INVENTORY)) {
+                return true;
             }
-            if (!(player.level() instanceof ServerLevel level)) {
-                return;
+            if (config.xpPolicy() == XpPolicy.KEEP) {
+                keepExperience(player);
             }
-            BlockPos pos = player.blockPosition();
-            if (!level.getBlockState(pos).isAir()) {
-                pos = pos.above();
+            graves.createGrave(player);
+            return true;
+        });
+        ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> {
+            Experience saved = keptExperience.remove(oldPlayer.getUUID());
+            if (saved != null && !alive) {
+                newPlayer.experienceLevel = saved.level();
+                newPlayer.experienceProgress = saved.progress();
+                newPlayer.totalExperience = saved.total();
             }
-            level.setBlockAndUpdate(pos, Blocks.CHEST.defaultBlockState());
-            if (level.getBlockEntity(pos) instanceof ChestBlockEntity chest) {
-                int slot = 0;
-                Inventory inventory = player.getInventory();
-                for (int i = 0; i < inventory.getContainerSize(); i++) {
-                    ItemStack stack = inventory.getItem(i);
-                    if (stack.isEmpty() || slot >= chest.getContainerSize()) {
-                        continue;
-                    }
-                    chest.setItem(slot++, stack.copy());
-                    stack.setCount(0);
-                }
-            }
-            graves.put(pos.immutable(), EXPIRE_TICKS);
-            String playerName = player.getGameProfile().name();
-            player.sendSystemMessage(Component.literal(
-                    "Your grave was placed at " + pos.toShortString() + " (" + playerName + ")"));
         });
 
-        ServerTickEvents.END_SERVER_TICK.register(server -> {
-            if (graves.isEmpty()) {
-                return;
+        UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
+            if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+                return InteractionResult.PASS;
             }
-            ServerLevel world = server.overworld();
-            Iterator<Map.Entry<BlockPos, Integer>> iterator = graves.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<BlockPos, Integer> entry = iterator.next();
-                int left = entry.getValue() - 1;
-                if (left > 0) {
-                    entry.setValue(left);
-                    continue;
-                }
-                BlockPos pos = entry.getKey();
-                if (world.getBlockEntity(pos) instanceof ChestBlockEntity chest) {
-                    for (int i = 0; i < chest.getContainerSize(); i++) {
-                        ItemStack stack = chest.getItem(i);
-                        if (!stack.isEmpty()) {
-                            world.addFreshEntity(new ItemEntity(
-                                    world,
-                                    pos.getX() + 0.5,
-                                    pos.getY() + 0.5,
-                                    pos.getZ() + 0.5,
-                                    stack));
-                        }
-                    }
-                }
-                world.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
-                iterator.remove();
+            Optional<GraveRecord> grave = graves.graveAt(world, hit.getBlockPos(), world.getBlockState(hit.getBlockPos()));
+            if (grave.isPresent() && !mayAccess(config.accessMode(), grave.get(), serverPlayer)) {
+                serverPlayer.sendSystemMessage(Component.literal("This grave belongs to " + grave.get().ownerName()), true);
+                return InteractionResult.FAIL;
+            }
+            return InteractionResult.PASS;
+        });
+        PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
+            if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+                return true;
+            }
+            Optional<GraveRecord> grave = graves.graveAt(world, pos, state);
+            return grave.isEmpty() || mayAccess(config.accessMode(), grave.get(), serverPlayer);
+        });
+        PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
+            if (!world.isClientSide()) {
+                graves.graveAt(world, pos, state).ifPresent(grave -> {
+                    graves.registry().remove(grave.id());
+                    graves.save();
+                });
             }
         });
+
+        CommandRegistrationCallback.EVENT.register(
+                (dispatcher, buildContext, selection) -> new CairnCommands(graves).register(dispatcher));
 
         LOGGER.info("cairn enabled");
+    }
+
+    private static boolean mayAccess(AccessMode mode, GraveRecord grave, ServerPlayer player) {
+        return mode.allows(grave.ownerId(), player.getUUID(), GraveManager.isAdmin(player));
+    }
+
+    private void keepExperience(ServerPlayer player) {
+        keptExperience.put(player.getUUID(),
+                new Experience(player.experienceLevel, player.experienceProgress, player.totalExperience));
+        // vanilla drops orbs from the level, so zero it before drops run
+        player.experienceLevel = 0;
+        player.experienceProgress = 0;
+        player.totalExperience = 0;
+    }
+
+    private static CairnConfig loadConfig(Path path) {
+        try {
+            return CairnConfig.loadOrCreate(path);
+        } catch (IOException | RuntimeException e) {
+            LOGGER.error("cairn could not read {}, using defaults", path, e);
+            return new CairnConfig();
+        }
     }
 }

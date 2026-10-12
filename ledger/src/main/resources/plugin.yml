@@ -6,17 +6,26 @@ authors: [nubstack]
 description: Vault-compatible economy with ledger
 commands:
   bal:
-    description: ledger command
+    description: Show balance
+    aliases: [balance, money]
     permission: ledger.use
   pay:
-    description: ledger command
+    description: Pay another player
+    permission: ledger.use
+  baltop:
+    description: Economy leaderboard
     permission: ledger.use
   ledger:
-    description: ledger command
+    description: Ledger help and admin tools
     permission: ledger.use
 permissions:
   ledger.use:
     default: true
+    description: Balance, pay, own history, receipt, top
   ledger.admin:
     default: op
+    description: Give, take, set, reload, view others' history
+  ledger.audit:
+    default: op
+    description: View others' history and receipts without full admin
 softdepend: [Vault]

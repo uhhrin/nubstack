@@ -3,27 +3,28 @@
 Network moderation for Paper and Velocity: bans, mutes, warnings, SQL audit
 trail, Redis sync, and optional Discord webhooks.
 
+**Who it is for:** network staff who need one `/aegis` surface on the proxy
+(network truth) with a Paper jar that also works on a single server.
+
 This folder holds the product docs. Runtime jars are built from the Gradle
 modules next to it:
 
 | Module | Role |
 | --- | --- |
 | [`aegis-common`](../aegis-common/) | Shared domain, SQL repository, Redis broadcast, webhook notifier |
-| [`aegis-paper`](../aegis-paper/) | Paper commands, mute chat, ban on join |
-| [`aegis-velocity`](../aegis-velocity/) | Velocity login ban enforcement and the same `/aegis` commands |
-
-There is no separate documentation repository. Design notes live here so the
-Paper and Velocity jars share one PRD and architecture write-up.
+| [`aegis-paper`](../aegis-paper/) | Paper commands, history GUI, mute chat, ban on join |
+| [`aegis-velocity`](../aegis-velocity/) | Velocity login ban enforcement and network `/aegis` |
 
 ## Features
 
 - Ban, mute, and warn by player UUID (names are display-only)
-- Temporary durations (`30s`, `12h`, `7d`) or permanent when duration is omitted
-- Every punish and revoke writes an SQL audit row
-- Redis channel keeps in-memory caches aligned across proxy and backends
-- Optional Discord webhook on punishment events
-- Paper blocks muted chat and kicks banned players on join
-- Velocity rejects banned players on login
+- Temporary durations (`10m`, `1h`, `1d`, `7d`, `30d`, `perm`) or permanent
+- Permanent ban/mute asks for click confirm in chat
+- Interactive history (hover reason/staff/time, suggest history, Copy ID)
+- Paper history chest GUI with pager and active-only toggle
+- Per-staff punish cooldown; soft `/aegis reload` (messages/webhook/aliases)
+- Config-toggled aliases (`/gban`, `/gmute`, `/gunban`, `/gwarn`, `/hist`, `/checkpunish`)
+- Redis channel keeps caches aligned; optional Discord webhook
 
 ## Requirements
 
@@ -43,11 +44,12 @@ Paper and Velocity jars share one PRD and architecture write-up.
    ./scripts/use-java.sh ./gradlew :aegis-paper:build :aegis-velocity:build
    ```
 
-2. Copy `aegis-paper-*.jar` into each Paper `plugins/` folder.
-3. Copy `aegis-velocity-*.jar` into the Velocity `plugins/` folder.
-4. Start once to write `config.yml`, then set JDBC and Redis credentials.
-5. Create the `aegis` database (or point JDBC at an existing schema). Tables are
-   created on startup with `CREATE TABLE IF NOT EXISTS`.
+2. **Network (recommended):** put `aegis-velocity-*.jar` on Velocity. That is
+   where staff should run `/aegis` so punishments apply before backend join.
+3. Optionally also put `aegis-paper-*.jar` on each Paper backend for mute chat
+   enforcement and the history GUI.
+4. **Single-server:** Paper jar alone works without Velocity.
+5. Start once to write `config.yml`, then set JDBC and Redis credentials.
 
 Both jars already include `spine` and `aegis-common`.
 
@@ -65,27 +67,43 @@ Shared keys on Paper and Velocity (`plugins/aegis/config.yml`):
 | `redis.port` | int | `6379` | Redis port |
 | `redis.password` | string | `""` | Redis password (empty if none) |
 | `discord.webhook-url` | string | `""` | Optional webhook; blank disables |
-| `messages.banned` | MiniMessage | ban template | Shown when a ban blocks join/login |
-| `messages.muted` | MiniMessage | mute template | Shown when muted chat is blocked |
-
-Docker testbed overrides live under `testbed/plugin-config/` and use hostnames
-`mariadb` / `redis`.
+| `messages.banned` | MiniMessage | ban template | Ban kick/login text (`<reason>`, `<appeal>`, `<code>`) |
+| `messages.muted` | MiniMessage | mute template | Legacy mute template key (chat uses interactive notify) |
+| `appeal.copy-text` | string | `Appeal code: <code>` | Clipboard payload for appeal button |
+| `rules-command` | string | `/rules` | Button on mute notify |
+| `staff-cooldown-ms` | int | `1500` | Per-staff punish cooldown |
+| `history.page-size` | int | `8` | Chat history page size |
+| `aliases.gban` | bool | `true` | Enable `/gban` |
+| `aliases.gmute` | bool | `true` | Enable `/gmute` |
+| `aliases.gunban` | bool | `true` | Enable `/gunban` |
+| `aliases.gwarn` | bool | `true` | Enable `/gwarn` |
+| `aliases.hist` | bool | `true` | Enable `/hist` |
+| `aliases.checkpunish` | bool | `true` | Enable `/checkpunish` |
 
 ## Commands
 
-Available on both Paper and Velocity.
+Primary surface: `/aegis` on **Velocity** for networks. Paper exposes the same
+subs for single-server or backend mute/GUI.
 
 | Command | Permission | Default | Effect |
 | --- | --- | --- | --- |
-| `/aegis ban <player> [duration] <reason>` | `aegis.ban` (+ `aegis.use`) | op | Apply ban; kick if online |
+| `/aegis` | `aegis.use` | op | Branded help hub |
+| `/aegis ban <player> [dur] <reason>` | `aegis.ban` | op | Ban; kick/disconnect with appeal copy |
 | `/aegis unban <player>` | `aegis.unban` | op | Revoke active ban |
-| `/aegis mute <player> [duration] <reason>` | `aegis.mute` | op | Apply mute; Paper blocks chat |
+| `/aegis mute <player> [dur] <reason>` | `aegis.mute` | op | Mute; Paper blocks chat |
 | `/aegis unmute <player>` | `aegis.unmute` | op | Revoke active mute |
 | `/aegis warn <player> <reason>` | `aegis.warn` | op | Record a warning |
-| `/aegis history <player>` | `aegis.history` | op | List punishment history |
+| `/aegis history <player> [page]` | `aegis.history` | op | Chat history; Paper also opens GUI |
+| `/aegis check <player>` | `aegis.history` | op | Active punishments |
+| `/aegis reason <id>` | `aegis.history` | op | Audit row detail + Copy ID |
+| `/aegis rollback <id>` | `aegis.unban` or `aegis.unmute` | op | Revoke by audit id |
+| `/aegis lookup <uuid\|name>` | `aegis.history` | op | Resolve with copy buttons |
+| `/aegis reload` | `aegis.reload` | op | Reload messages/webhook/aliases |
 
-Duration examples: `30s`, `12h`, `7d`. Omit duration for permanent ban/mute.
-Warns do not take a duration.
+Aliases (config-toggled): `/gban`, `/gmute`, `/gunban`, `/gwarn`, `/hist`,
+`/checkpunish`.
+
+Duration presets in tab complete: `10m`, `1h`, `1d`, `7d`, `30d`, `perm`.
 
 ## Permissions
 
@@ -93,11 +111,12 @@ Warns do not take a duration.
 | --- | --- | --- |
 | `aegis.use` | op | Root command access |
 | `aegis.ban` | op | Issue bans |
-| `aegis.unban` | op | Revoke bans |
+| `aegis.unban` | op | Revoke bans / rollback bans |
 | `aegis.mute` | op | Issue mutes |
 | `aegis.unmute` | op | Revoke mutes |
 | `aegis.warn` | op | Issue warnings |
-| `aegis.history` | op | View history |
+| `aegis.history` | op | History, check, reason, lookup |
+| `aegis.reload` | op | Soft reload |
 
 ## Examples
 
@@ -106,7 +125,10 @@ Warns do not take a duration.
 /aegis mute Alex 12h spam
 /aegis warn Alex first warning for spam
 /aegis history Steve
+/aegis check Steve
+/aegis reason <audit-uuid>
 /aegis unban Steve
+/gban Steve perm cheating
 ```
 
 ## Design docs
@@ -116,5 +138,6 @@ Warns do not take a duration.
 
 ## Status
 
-MVP on `dev`. Core punish paths and unit tests exist. Not claimed as a full
-staff suite (no vanish, freeze, or web admin).
+Staff UX polish on `feat/aegis-polish`. Core punish paths, interactive chat,
+history GUI (Paper), aliases, and unit tests. Not a full staff suite (no vanish,
+freeze, IP ban, or web admin).

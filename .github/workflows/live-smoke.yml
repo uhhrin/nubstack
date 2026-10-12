@@ -1,0 +1,101 @@
+name: live-smoke
+
+# Manual only: builds jars, syncs plugins, brings up the local Docker testbed,
+# runs Mineflayer smoke, then tears down. No secrets; tether stays skipped.
+on:
+  workflow_dispatch:
+    inputs:
+      fabric:
+        description: "Also pass --profile fabric to docker compose"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew build --no-daemon
+
+      - name: Sync plugins into testbed
+        run: ./testbed/scripts/sync-plugins.sh
+
+      - name: Start testbed
+        id: up
+        working-directory: testbed
+        run: |
+          set -euo pipefail
+          EXTRA=()
+          if [[ "${{ inputs.fabric }}" == "true" ]]; then
+            # shortcut: compose has no fabric profile yet; add when Fabric service lands
+            EXTRA+=(--profile fabric)
+          fi
+          docker compose "${EXTRA[@]}" -f docker-compose.yml up -d
+
+      - name: Wait for proxy port
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if (echo >/dev/tcp/127.0.0.1/25565) >/dev/null 2>&1; then
+              echo "proxy accepting connections"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "proxy did not become ready"
+          exit 1
+
+      - name: Run Mineflayer smoke
+        working-directory: testbed/bots
+        env:
+          PROXY_HOST: 127.0.0.1
+          PROXY_PORT: "25565"
+          BOT_COUNT: "3"
+        run: |
+          set -euo pipefail
+          # shortcut: no package-lock.json in testbed/bots yet; prefer npm ci when added
+          if [[ -f package-lock.json ]]; then npm ci; else npm install; fi
+          npm run smoke
+
+      - name: Dump compose logs on failure
+        if: failure()
+        working-directory: testbed
+        run: |
+          set -euo pipefail
+          EXTRA=()
+          if [[ "${{ inputs.fabric }}" == "true" ]]; then
+            EXTRA+=(--profile fabric)
+          fi
+          docker compose "${EXTRA[@]}" -f docker-compose.yml logs --no-color | tee "$GITHUB_WORKSPACE/live-smoke-logs.txt" || true
+
+      - name: Upload compose logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-smoke-logs
+          path: live-smoke-logs.txt
+          if-no-files-found: ignore
+
+      - name: Tear down testbed
+        if: always()
+        working-directory: testbed
+        run: |
+          set -euo pipefail
+          EXTRA=()
+          if [[ "${{ inputs.fabric }}" == "true" ]]; then
+            EXTRA+=(--profile fabric)
+          fi
+          docker compose "${EXTRA[@]}" -f docker-compose.yml down -v

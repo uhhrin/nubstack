@@ -42,6 +42,12 @@ public final class AegisVelocityPlugin {
         proxy.getCommandManager().register(
                 proxy.getCommandManager().metaBuilder("aegis").plugin(this).build(),
                 new AegisVelocityCommand(this, proxy, runtime));
+        // shortcut: alias registration is startup-only; reload toggles reject at execute time
+        for (String alias : runtime.settings().enabledAliases()) {
+            proxy.getCommandManager().register(
+                    proxy.getCommandManager().metaBuilder(alias).plugin(this).build(),
+                    new AegisVelocityCommand(this, proxy, runtime, alias));
+        }
         logger.info("aegis enabled");
     }
 

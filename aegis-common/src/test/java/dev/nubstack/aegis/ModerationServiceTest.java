@@ -104,4 +104,15 @@ class ModerationServiceTest {
 
         assertTrue(service.activeBan(target).isPresent());
     }
+
+    @Test
+    void rollback_byAuditId() {
+        UUID target = UUID.randomUUID();
+        UUID staff = UUID.randomUUID();
+        Punishment ban = service.punish(
+                PunishmentType.BAN, target, "Steve", staff, "Admin", "cheat", null);
+        assertTrue(service.rollback(ban.id(), staff));
+        assertTrue(service.activeBan(target).isEmpty());
+        assertTrue(service.findById(ban.id()).isPresent());
+    }
 }

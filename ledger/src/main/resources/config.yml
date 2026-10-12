@@ -1,7 +1,10 @@
-
 database:
   jdbc-url: jdbc:mariadb://localhost:3306/nubstack
   username: nubstack
   password: change-me
   pool-size: 5
 currency-name: Credits
+# Maximum amount accepted by /pay, /ledger give|take|set
+max-amount: '1000000.00'
+# Pays at or above this amount ask for ConfirmChat confirmation
+confirm-above: '500.00'

@@ -1,10 +1,7 @@
-
 package dev.nubstack.gatekeep;
 
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
-import java.net.InetSocketAddress;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 
 public final class GatekeepListener {
 
@@ -16,12 +13,17 @@ public final class GatekeepListener {
 
     @Subscribe
     public void onPreLogin(PreLoginEvent event) {
-        InetSocketAddress address = event.getConnection().getRemoteAddress();
-        String ip = address.getAddress().getHostAddress();
-        if (plugin.guard().allow(ip)) {
+        String ip = event.getConnection().getRemoteAddress().getAddress().getHostAddress();
+        int zone = ip.indexOf('%');
+        if (zone >= 0) {
+            ip = ip.substring(0, zone);
+        }
+        ConnectionGuard.Decision decision = plugin.guard().check(ip);
+        if (decision.allowed()) {
             return;
         }
+        plugin.logger().info(decision.logLine(ip));
         event.setResult(PreLoginEvent.PreLoginComponentResult.denied(
-                MiniMessage.miniMessage().deserialize(plugin.denyMessage())));
+                GatekeepTexts.denyMessage(plugin.denyMessage(), decision)));
     }
 }

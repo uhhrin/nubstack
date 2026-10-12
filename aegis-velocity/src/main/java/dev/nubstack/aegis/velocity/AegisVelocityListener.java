@@ -3,10 +3,10 @@ package dev.nubstack.aegis.velocity;
 import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.LoginEvent;
+import dev.nubstack.aegis.AegisChat;
 import dev.nubstack.aegis.AegisRuntime;
 import dev.nubstack.aegis.Punishment;
 import java.util.Optional;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 
 public final class AegisVelocityListener {
 
@@ -22,7 +22,7 @@ public final class AegisVelocityListener {
         if (ban.isEmpty()) {
             return;
         }
-        String template = runtime.bannedMessage().replace("<reason>", ban.get().reason());
-        event.setResult(ResultedEvent.ComponentResult.denied(MiniMessage.miniMessage().deserialize(template)));
+        event.setResult(ResultedEvent.ComponentResult.denied(
+                AegisChat.banScreen(ban.get(), runtime.settings())));
     }
 }

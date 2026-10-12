@@ -24,7 +24,7 @@ public final class JdbcPunishmentRepository implements PunishmentRepository {
 
     @Override
     public void initSchema() {
-        String sql = """
+        String table = """
                 CREATE TABLE IF NOT EXISTS aegis_punishments (
                   id VARCHAR(36) PRIMARY KEY,
                   target_id VARCHAR(36) NOT NULL,
@@ -41,10 +41,24 @@ public final class JdbcPunishmentRepository implements PunishmentRepository {
                 )
                 """;
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement statement = connection.prepareStatement(sql)) {
+                PreparedStatement statement = connection.prepareStatement(table)) {
             statement.execute();
         } catch (SQLException exception) {
             throw new IllegalStateException("Failed to initialize aegis schema", exception);
+        }
+        // Idempotent indexes for history/active lookups (H2 + MariaDB).
+        executeIgnore("CREATE INDEX IF NOT EXISTS idx_aegis_target ON aegis_punishments (target_id)");
+        executeIgnore(
+                "CREATE INDEX IF NOT EXISTS idx_aegis_active_expires ON aegis_punishments (active, expires_at)");
+    }
+
+    private void executeIgnore(String sql) {
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.execute();
+        } catch (SQLException exception) {
+            // shortcut: some JDBC drivers reject IF NOT EXISTS on indexes; table create still works
+            throw new IllegalStateException("Failed to ensure aegis index: " + sql, exception);
         }
     }
 
@@ -98,6 +112,41 @@ public final class JdbcPunishmentRepository implements PunishmentRepository {
     }
 
     @Override
+    public boolean deactivateById(UUID punishmentId, UUID staffId) {
+        String sql = """
+                UPDATE aegis_punishments
+                SET active = FALSE, revoked_at = ?, revoked_by = ?
+                WHERE id = ? AND active = TRUE
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setTimestamp(1, Timestamp.from(Instant.now()));
+            statement.setString(2, staffId.toString());
+            statement.setString(3, punishmentId.toString());
+            return statement.executeUpdate() > 0;
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed to deactivate punishment by id", exception);
+        }
+    }
+
+    @Override
+    public Optional<Punishment> findById(UUID punishmentId) {
+        String sql = "SELECT * FROM aegis_punishments WHERE id = ?";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, punishmentId.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return Optional.empty();
+                }
+                return Optional.of(mapRow(resultSet));
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed to query punishment by id", exception);
+        }
+    }
+
+    @Override
     public Optional<Punishment> findActive(UUID targetId, PunishmentType type) {
         String sql = """
                 SELECT * FROM aegis_punishments
@@ -120,17 +169,18 @@ public final class JdbcPunishmentRepository implements PunishmentRepository {
     }
 
     @Override
-    public List<Punishment> history(UUID targetId, int limit) {
+    public List<Punishment> history(UUID targetId, int limit, int offset) {
         String sql = """
                 SELECT * FROM aegis_punishments
                 WHERE target_id = ?
                 ORDER BY created_at DESC
-                LIMIT ?
+                LIMIT ? OFFSET ?
                 """;
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, targetId.toString());
             statement.setInt(2, limit);
+            statement.setInt(3, Math.max(0, offset));
             try (ResultSet resultSet = statement.executeQuery()) {
                 List<Punishment> rows = new ArrayList<>();
                 while (resultSet.next()) {
@@ -140,6 +190,28 @@ public final class JdbcPunishmentRepository implements PunishmentRepository {
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Failed to query punishment history", exception);
+        }
+    }
+
+    @Override
+    public List<Punishment> findActiveForTarget(UUID targetId) {
+        String sql = """
+                SELECT * FROM aegis_punishments
+                WHERE target_id = ? AND active = TRUE
+                ORDER BY created_at DESC
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, targetId.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<Punishment> rows = new ArrayList<>();
+                while (resultSet.next()) {
+                    rows.add(mapRow(resultSet));
+                }
+                return List.copyOf(rows);
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed to query active punishments for target", exception);
         }
     }
 

@@ -12,9 +12,15 @@ public interface PunishmentRepository {
 
     boolean deactivate(UUID targetId, PunishmentType type, UUID staffId);
 
+    boolean deactivateById(UUID punishmentId, UUID staffId);
+
+    Optional<Punishment> findById(UUID punishmentId);
+
     Optional<Punishment> findActive(UUID targetId, PunishmentType type);
 
-    List<Punishment> history(UUID targetId, int limit);
+    List<Punishment> history(UUID targetId, int limit, int offset);
+
+    List<Punishment> findActiveForTarget(UUID targetId);
 
     List<Punishment> findAllActive();
 }

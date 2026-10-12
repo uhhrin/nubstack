@@ -23,11 +23,19 @@ dependencies {
     "minecraft"("com.mojang:minecraft:${property("minecraftVersion")}")
     implementation("net.fabricmc:fabric-loader:${property("fabricLoaderVersion")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${property("fabricApiVersion")}")
+
+    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
     options.release.set(providers.gradleProperty("javaVersion").get().toInt())
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 tasks.processResources {

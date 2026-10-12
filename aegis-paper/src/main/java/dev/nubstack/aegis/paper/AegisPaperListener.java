@@ -1,12 +1,11 @@
 package dev.nubstack.aegis.paper;
 
+import dev.nubstack.aegis.AegisChat;
 import dev.nubstack.aegis.AegisRuntime;
 import dev.nubstack.aegis.Punishment;
-import dev.nubstack.spine.text.Messages;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import java.util.Optional;
 import java.util.UUID;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -30,10 +29,9 @@ public final class AegisPaperListener implements Listener {
         if (ban.isEmpty()) {
             return;
         }
-        String template = runtime.bannedMessage().replace("<reason>", ban.get().reason());
         event.disallow(
                 AsyncPlayerPreLoginEvent.Result.KICK_BANNED,
-                Messages.parse(template));
+                AegisChat.banScreen(ban.get(), runtime.settings()));
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -43,8 +41,7 @@ public final class AegisPaperListener implements Listener {
             return;
         }
         event.setCancelled(true);
-        String template = runtime.mutedMessage().replace("<reason>", mute.get().reason());
-        event.getPlayer().sendMessage(MiniMessage.miniMessage().deserialize(template));
+        event.getPlayer().sendMessage(AegisChat.muteNotify(mute.get(), runtime.settings().rulesCommand()));
         plugin.getLogger().fine("Blocked muted chat from " + event.getPlayer().getName());
     }
 }

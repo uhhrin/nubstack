@@ -10,6 +10,10 @@ dependencies {
         exclude(group = "org.bukkit")
     }
 
+    testImplementation("io.papermc.paper:paper-api:${property("paperApiVersion")}")
+    testImplementation("com.github.MilkBowl:VaultAPI:1.7.1") {
+        exclude(group = "org.bukkit")
+    }
     testImplementation("com.h2database:h2:2.5.252")
     testRuntimeOnly("org.slf4j:slf4j-simple:${property("slf4jVersion")}")
 }

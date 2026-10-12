@@ -8,6 +8,7 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:${property("paperApiVersion")}")
     implementation("net.dv8tion:JDA:${property("jdaVersion")}")
 
+    testImplementation("io.papermc.paper:paper-api:${property("paperApiVersion")}")
     testImplementation("com.h2database:h2:2.5.252")
     testRuntimeOnly("org.slf4j:slf4j-simple:${property("slf4jVersion")}")
 }

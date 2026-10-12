@@ -1,4 +1,14 @@
-
+# Allowed connection attempts per address inside the window.
 max-attempts: 5
+# Sliding window length in seconds.
 window-seconds: 60
-deny-message: "<red>Too many connections. Try again later.</red>"
+# Shown on the disconnect screen (MiniMessage). A support code is appended automatically.
+deny-message: "<red>Too many connection attempts from your address. Please wait a moment and try again.</red>"
+# Count every address in one IPv6 /64 as a single client.
+ipv6-group-64: true
+# Addresses or CIDR ranges that are never throttled (IPv4 and IPv6).
+exempt:
+  - 127.0.0.0/8
+  - ::1/128
+# Also exempt 172.16.0.0/12, 192.168.0.0/16 and 10.0.0.0/8 (typical Docker and LAN ranges).
+exempt-docker-private: false

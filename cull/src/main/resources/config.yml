@@ -1,2 +1,23 @@
+# Soft cap on entities (all types, including items) per loaded chunk.
 max-entities-per-chunk: 40
+# How often overflow cleanup runs (20 ticks = 1 second).
 cleanup-interval-ticks: 200
+# Which entities cleanup and spawn cancelling may remove over the cap:
+#   all     any type not in deny-types
+#   hostile only hostile mobs
+#   custom  only types listed in allow-types
+mode: all
+# Entity type names for mode custom, for example [ZOMBIE, ITEM].
+allow-types: []
+# Never removed in any mode.
+deny-types: [ITEM_FRAME, GLOW_ITEM_FRAME, PAINTING, LEASH_KNOT, ENDER_DRAGON, WITHER]
+# Per-world caps override max-entities-per-chunk, for example world_nether: 60.
+worlds: {}
+# Cleanup skips these unless set to false.
+protect:
+  named: true
+  tamed: true
+  leashed: true
+  villagers: true
+  armor-stands: true
+  vehicles: true

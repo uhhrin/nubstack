@@ -57,6 +57,9 @@ skills-lock.json
 *.local.md
 .ponytail/
 
+# Local product ideation (not for git / releases)
+improvements/
+
 # Node harness (Mineflayer) install trees
 node_modules/
 package-lock.json

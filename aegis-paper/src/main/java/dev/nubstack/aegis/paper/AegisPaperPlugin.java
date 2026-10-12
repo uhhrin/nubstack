@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class AegisPaperPlugin extends JavaPlugin {
@@ -15,7 +16,8 @@ public final class AegisPaperPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfigFile();
         runtime = AegisRuntime.start(getDataFolder().toPath(), true);
-        AegisCommand command = new AegisCommand(this, runtime);
+        HistoryGui historyGui = new HistoryGui(this);
+        AegisCommand command = new AegisCommand(this, runtime, historyGui);
         org.bukkit.command.PluginCommand pluginCommand = getCommand("aegis");
         if (pluginCommand == null) {
             getLogger().severe("Command 'aegis' missing from plugin.yml");
@@ -24,6 +26,14 @@ public final class AegisPaperPlugin extends JavaPlugin {
         }
         pluginCommand.setExecutor(command);
         pluginCommand.setTabCompleter(command);
+        for (String alias : List.of("gban", "gmute", "gunban", "gwarn", "hist", "checkpunish")) {
+            org.bukkit.command.PluginCommand aliasCommand = getCommand(alias);
+            if (aliasCommand != null) {
+                aliasCommand.setExecutor(command);
+                aliasCommand.setTabCompleter(command);
+            }
+        }
+        getServer().getPluginManager().registerEvents(historyGui, this);
         getServer().getPluginManager().registerEvents(new AegisPaperListener(this, runtime), this);
         getLogger().info("aegis enabled");
     }

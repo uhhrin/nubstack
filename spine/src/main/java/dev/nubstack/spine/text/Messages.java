@@ -5,7 +5,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 /**
- * MiniMessage helpers shared across plugins.
+ * MiniMessage helpers and the portfolio chat kit entry points.
  */
 public final class Messages {
 
@@ -25,4 +25,12 @@ public final class Messages {
     public static String plain(String miniMessage) {
         return PLAIN.serialize(parse(miniMessage));
     }
+
+    /**
+     * Starts a prefixed fluent builder: {@code Messages.prefixed("tether").info("...")}.
+     */
+    public static PrefixedMessages prefixed(String pluginName) {
+        return new PrefixedMessages(pluginName);
+    }
 }
+

@@ -6,10 +6,17 @@ authors: [nubstack]
 description: Lag attribution by chunk
 commands:
   spotlight:
-    description: spotlight command
-    permission: spotlight.use
+    description: Scan loaded chunks for lag hotspots
+    usage: /spotlight [scan|here|near|tp|book|weights|reload]
+    permission: spotlight.scan
+    aliases: [lagscan]
 permissions:
-  spotlight.use:
-    default: op
   spotlight.scan:
+    description: Run scans and view results (demo-safe)
+    default: op
+  spotlight.tp:
+    description: Click-to-teleport on scan result lines
+    default: op
+  spotlight.admin:
+    description: View weights and reload config
     default: op

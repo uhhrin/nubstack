@@ -6,10 +6,13 @@ authors: [nubstack]
 description: Per-chunk mob limits and cleanup
 commands:
   cull:
-    description: cull command
+    description: Chunk entity caps, scans and cleanup
+    usage: /cull [status|scan|here|tp|run|reload]
     permission: cull.use
 permissions:
   cull.use:
+    description: Help, status, scan, here and tp
     default: op
   cull.admin:
+    description: Run cleanup now and reload config
     default: op
