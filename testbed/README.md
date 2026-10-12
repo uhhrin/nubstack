@@ -15,6 +15,7 @@ default generation and vanilla spawn (no schematics / WorldEdit).
 players / bots -> velocity:25565
                    |- hub (Paper, always on)
                    |- minigame (Paper, --profile minigame)
+                   |- cairn (Fabric, --profile fabric)  # death chests
 redis + mariadb shared for plugin configs
 docs -> http://localhost:8080
 ```
@@ -78,11 +79,22 @@ cp testbed/.env.example testbed/.env
 docker compose -f testbed/docker-compose.yml up -d
 ```
 
-Optional second backend:
+Optional second Paper backend:
 
 ```bash
 docker compose -f testbed/docker-compose.yml --profile minigame up -d
 ```
+
+Optional Fabric backend for **cairn** (survival world; `/server cairn` from hub):
+
+```bash
+./testbed/scripts/sync-plugins.sh   # includes cairn jar -> plugins/fabric
+docker compose -f testbed/docker-compose.yml --profile fabric up -d
+```
+
+In game: `/server cairn`, die with items, check the grave message, `/server hub` to return.
+FabricProxy-Lite uses `FABRIC_PROXY_SECRET` matching `velocity/forwarding.secret`.
+ViaFabric (alpha) + ViaBackwards (beta) are installed for Mineflayer 26.1; prefer a real 26.2 client for cairn.
 
 If Paper crash-loops with `Overworld settings missing`, wipe volumes and recreate:
 

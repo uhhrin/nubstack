@@ -3,8 +3,10 @@
 # Docs: http://localhost:${DOCS_HOST_PORT:-8080}
 #
 # Default stack is intentionally light: one Paper backend.
-# Second backend:
+# Optional backends:
 #   docker compose -f testbed/docker-compose.yml --profile minigame up -d
+#   docker compose -f testbed/docker-compose.yml --profile fabric up -d
+#     then in-game: /server cairn
 #
 # Usage:
 #   cp testbed/.env.example testbed/.env   # optional
@@ -150,6 +152,45 @@ services:
       - ./config:/config:ro
     networks: [nubstack]
 
+  # Optional Fabric backend for cairn. Enable with: --profile fabric
+  # Survival so death chests can be exercised (hub stays creative).
+  fabric:
+    profiles: ["fabric"]
+    image: itzg/minecraft-server:java25
+    restart: unless-stopped
+    cpus: ${PAPER_CPUS:-1.5}
+    mem_limit: ${FABRIC_MEM_LIMIT:-1280m}
+    environment:
+      EULA: "TRUE"
+      TYPE: FABRIC
+      VERSION: ${MC_VERSION:-26.2}
+      ONLINE_MODE: "FALSE"
+      DIFFICULTY: peaceful
+      MODE: survival
+      SPAWN_PROTECTION: "0"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: ${RCON_PASSWORD:-nubstack}
+      RCON_PORT: 25575
+      FORCE_GAMEMODE: "true"
+      VIEW_DISTANCE: ${VIEW_DISTANCE:-4}
+      SIMULATION_DISTANCE: ${SIMULATION_DISTANCE:-4}
+      MAX_PLAYERS: ${MAX_PLAYERS:-10}
+      SPAWN_MONSTERS: "false"
+      SPAWN_ANIMALS: "false"
+      SPAWN_NPCS: "false"
+      USE_AIKAR_FLAGS: "false"
+      JVM_XX_OPTS: "-XX:ActiveProcessorCount=${PAPER_CPU_COUNT:-2} -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+      MEMORY: ${FABRIC_MEMORY:-1G}
+      # ViaFabric is alpha-only for 26.x; pin channel so Modrinth resolve succeeds.
+      MODRINTH_PROJECTS: fabric-api,fabricproxy-lite,viafabric:alpha,viabackwards:beta
+      MODRINTH_DOWNLOAD_DEPENDENCIES: required
+      # Env secret (not FILE): FabricProxy-Lite trims poorly with trailing newlines on file mounts.
+      FABRIC_PROXY_SECRET: ${VELOCITY_FORWARDING_SECRET:-nubstack-forwarding-secret}
+    volumes:
+      - fabric-data:/data
+      - ./plugins/fabric:/mods:ro
+    networks: [nubstack]
+
   bots:
     image: node:22-alpine
     profiles: ["bots"]
@@ -172,4 +213,5 @@ volumes:
   velocity-data:
   hub-data:
   minigame-data:
+  fabric-data:
   mariadb-data:

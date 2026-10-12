@@ -13,6 +13,7 @@ ping-passthrough = "DISABLED"
 [servers]
 hub = "hub:25565"
 minigame = "minigame:25565"
+cairn = "fabric:25565"
 try = ["hub"]
 
 [forced-hosts]
