@@ -24,7 +24,7 @@ dependencies {
     implementation("net.fabricmc:fabric-loader:${property("fabricLoaderVersion")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${property("fabricApiVersion")}")
 
-    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
