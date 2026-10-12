@@ -8,7 +8,7 @@ dependencies {
 
     implementation("org.slf4j:slf4j-api:${property("slf4jVersion")}")
 
-    compileOnly("org.jetbrains:annotations:26.0.2")
+    compileOnly("org.jetbrains:annotations:26.1.0")
 
     testImplementation("com.h2database:h2:2.5.252")
     testRuntimeOnly("org.slf4j:slf4j-simple:${property("slf4jVersion")}")
