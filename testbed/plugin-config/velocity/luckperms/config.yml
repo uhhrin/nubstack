@@ -1,0 +1,2 @@
+# Testbed only. Flat JSON files so groups and the three bot users can be seeded from git.
+storage-method: json

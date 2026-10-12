@@ -1,0 +1,8 @@
+{
+  "name": "vip",
+  "permissions": [
+    {
+      "harbor.priority.vip": true
+    }
+  ]
+}

@@ -105,6 +105,10 @@ services:
       TYPE: VELOCITY
       MEMORY: ${VELOCITY_MEMORY:-256M}
       JVM_XX_OPTS: "-XX:ActiveProcessorCount=1"
+      # Velocity has no op list. LuckPerms gives the Mineflayer bots staff nodes for
+      # /aegis, /gatekeep and /harbor admin (see plugin-config/velocity/luckperms).
+      MINECRAFT_VERSION: ${MC_VERSION:-26.2}
+      MODRINTH_PROJECTS: luckperms
     volumes:
       - ./velocity/velocity.toml:/config/velocity.toml:ro
       - ./velocity/forwarding.secret:/config/forwarding.secret:ro

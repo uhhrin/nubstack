@@ -1,0 +1,6 @@
+# Strict overlay for the Mineflayer gatekeep scenario. Not staged by sync-plugins.sh.
+# Copied over the running Velocity config by bots/scenarios/gatekeep.mjs or
+# scripts/gatekeep-profile.sh strict, then applied with /gatekeep reload.
+max-attempts: 3
+window-seconds: 60
+deny-message: "<red>Strict testbed throttle.</red>"

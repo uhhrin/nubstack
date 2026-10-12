@@ -1,0 +1,10 @@
+{
+  "uuid": "51a4b33d-8b80-3bde-806f-de4086b03058",
+  "name": "Bot1",
+  "primaryGroup": "staff",
+  "permissions": [
+    {
+      "group.staff": true
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "uuid": "16beaa94-ff1b-37a7-8afb-c22dcb8c16d1",
+  "name": "Bot2",
+  "primaryGroup": "default",
+  "permissions": [
+    {
+      "group.default": true
+    }
+  ]
+}

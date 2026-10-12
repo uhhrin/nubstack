@@ -47,6 +47,8 @@ if [[ -d "$PAPER_CFG" ]]; then
 fi
 if [[ -d "$VEL_CFG" ]]; then
   cp -a "$VEL_CFG"/. "$VEL_OUT/"
+  # Overlays are applied on demand (scripts/gatekeep-profile.sh), never at startup.
+  rm -rf "$VEL_OUT/gatekeep-strict"
   echo "staged velocity plugin configs from plugin-config/velocity"
 fi
 
