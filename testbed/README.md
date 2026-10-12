@@ -48,7 +48,7 @@ What `.env` actually drives today:
 | `RCON_PASSWORD`, `MARIADB_*` | Hub, minigame, MariaDB |
 | `VELOCITY_FORWARDING_SECRET` | Paper `PAPER_VELOCITY_SECRET` (must match `velocity/forwarding.secret`) |
 | `TETHER_DISCORD_TOKEN`, `TETHER_DISCORD_CHANNEL_ID`, `TETHER_DISCORD_GUILD_ID` | Interpolated into tether `config.yml` via `${CFG_TETHER_DISCORD_*}` |
-| `PROXY_HOST`, `PROXY_PORT`, `BOT_COUNT` | Host Mineflayer smoke (`bots/smoke.mjs`) |
+| `PROXY_HOST`, `PROXY_PORT`, `BOT_COUNT`, `BOT_VERSION` | Host Mineflayer smoke and suite (`bots/`) |
 | `BOT_COUNT` | Compose `--profile bots` (host/port are fixed to `velocity:25577`) |
 
 ### Resource notes
@@ -107,25 +107,67 @@ docker compose -f testbed/docker-compose.yml up -d
 - Open the plugin test guide at [http://localhost:8080](http://localhost:8080)
 - `/server hub` (and `/server minigame` when that profile is up)
 
-### Mineflayer smoke
+### Mineflayer suite
 
-Mineflayer’s published protocol data currently ends at **26.1**, while Paper is
-**26.2**. Hub and minigame install ViaVersion + ViaBackwards so bots can join.
-The smoke script pins `BOT_VERSION=26.1` by default.
+Mineflayer's published protocol data currently ends at **26.1**, while Paper is
+**26.2**. Hub, minigame and Fabric install ViaVersion or ViaBackwards (ViaFabric
+on Fabric) so bots can join. The scripts pin `BOT_VERSION=26.1` by default.
 
 From the host (proxy published on 25565):
 
 ```bash
 cd testbed/bots
 npm install
-PROXY_HOST=127.0.0.1 PROXY_PORT=25565 npm run smoke
+npm run smoke
+npm run test:ledger
+npm run test:all -- --continue
 ```
 
-Or inside Compose:
+| Script | Backends needed | Notes |
+|---|---|---|
+| `smoke` | hub | Three bots join. |
+| `test:ledger`, `test:spotlight`, `test:cull`, `test:amber`, `test:aegis`, `test:gatekeep` | hub | `cull`, `gatekeep` and `amber` restore what they change. |
+| `test:tether` | hub | Skipped unless `TETHER_LIVE=1`; see the Discord note below. |
+| `test:loom`, `test:harbor` | hub + `--profile minigame` | |
+| `test:cairn` | hub + `--profile fabric` | |
+| `test:all` | any | Runs the suite in order; missing backends are skipped with a hint. `-- --continue` keeps going after a failure. |
+
+Every run writes `testbed/bots/reports/<timestamp>.json` and `latest.json`
+(gitignored). On failure the bot's last chat lines are printed. Other knobs:
+`PROXY_HOST`, `PROXY_PORT`, `BOT_VERSION`, `BOT_SEND_GAP_MS` (default 350, spacing
+between one bot's commands because Velocity can mis-forward back-to-back sends).
+
+Or inside Compose (smoke only):
 
 ```bash
 docker compose -f testbed/docker-compose.yml --profile bots run --rm bots
 ```
+
+Scenarios drive Paper through `docker compose exec <service> rcon-cli`, so run them
+from a checkout that owns the stack.
+
+### Staff permissions on Velocity
+
+Velocity has no op list. The Velocity container installs LuckPerms (JSON storage,
+seeded from `plugin-config/velocity/luckperms/`): `Bot1` is `staff`
+(aegis, gatekeep, harbor admin), `Bot2` is `default`, `Bot3` is `vip`
+(harbor priority 10). Backend commands still use `/op`.
+
+```bash
+./testbed/scripts/wait-and-op.sh your-ign   # waits for rcon, ops on hub/minigame/fabric
+./testbed/scripts/seed-demo.sh your-ign     # ops bots, ledger set 500, LuckPerms staff for your-ign
+./testbed/scripts/gatekeep-profile.sh strict  # 3 attempts per 60s; then /gatekeep reload
+./testbed/scripts/gatekeep-profile.sh default
+```
+
+### Known limits
+
+- With the Tether Discord settings filled in `.env`, `test:tether` and any chat from
+  bots go through the real Discord bridge and post to your channel. Blank
+  `TETHER_DISCORD_*` for quiet runs.
+- On a host with full swap, a backend JVM can be killed at startup. Set
+  `HUB_MEMORY=768M`, `MINIGAME_MEMORY=768M`, `FABRIC_MEMORY=768M` in `.env`.
+- Bots cannot right-click a cairn grave, so key use and the resource pack are manual checks.
 
 ## Releases
 
