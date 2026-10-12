@@ -136,8 +136,7 @@ Duration presets in tab complete: `10m`, `1h`, `1d`, `7d`, `30d`, `perm`.
 - [PRD](docs/PRD.md)
 - [Architecture](docs/ARCHITECTURE.md)
 
-## Status
+## Limitations
 
-Staff UX polish on `feat/aegis-polish`. Core punish paths, interactive chat,
-history GUI (Paper), aliases, and unit tests. Not a full staff suite (no vanish,
-freeze, IP ban, or web admin).
+Core punish paths, interactive chat, history GUI (Paper), aliases, and unit
+tests. Not a full staff suite (no vanish, freeze, IP ban, or web admin).

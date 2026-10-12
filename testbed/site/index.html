@@ -355,7 +355,11 @@ npm run test:all -- --continue   # keep going and report every failure</code></p
 
     <section id="cairn">
       <h2>cairn <span class="tag">Fabric server</span></h2>
-      <p>Death graves for vanilla clients. Runs on the optional Fabric backend, which Velocity registers as <code>cairn</code>.</p>
+      <p>
+        Death graves for vanilla clients. Runs on the optional Fabric backend
+        (<code>/server cairn</code>). Loot is virtual; the world marker is a barrel.
+        Only the matching grave key (or a level-2 admin) can open it.
+      </p>
       <pre><code>./testbed/scripts/sync-plugins.sh
 docker compose -f testbed/docker-compose.yml --profile fabric up -d
 # in game: /server cairn   (survival world)   and /server hub to return</code></pre>
@@ -364,15 +368,16 @@ docker compose -f testbed/docker-compose.yml --profile fabric up -d
           <tr><th>Command / behavior</th><th>Who</th><th>Expected output</th></tr>
         </thead>
         <tbody>
-          <tr><td>Player death</td><td>(passive)</td><td><code>Your grave was placed at 82 69 -13 in minecraft:overworld [Copy coords]</code> (admins also see <code>[Tp]</code>). The inventory leaves the player. A grave key is issued where the build supports it; the custom model needs the resource pack in <code>testbed/resourcepacks/</code>.</td></tr>
+          <tr><td>Player death</td><td>(passive)</td><td><code>Your grave was placed at 82 69 -13 in minecraft:overworld [Copy coords]</code> (admins also see <code>[Tp]</code>). Inventory leaves the player. On respawn you get a transferable grave key. Fabric forces the pack from the docs host (<code>testbed/site/resourcepacks/cairn-resourcepack.zip</code>) for custom models.</td></tr>
+          <tr><td>Right-click marker</td><td>key holder / admin</td><td>Hold the matching key (main or off hand) and right-click the barrel to open the virtual chest. Without the key: <code>Hold the matching grave key to open this</code>.</td></tr>
           <tr><td><code>/cairn</code></td><td>anyone</td><td>One-line help.</td></tr>
           <tr><td><code>/cairn locate</code>, <code>list</code></td><td>players</td><td><code>#1 82 69 -13 in minecraft:overworld, 14m left [Copy coords]</code></td></tr>
           <tr><td><code>/cairn admin list [player]</code>, <code>tp &lt;id&gt;</code>, <code>key &lt;id&gt;</code>, <code>expire &lt;id&gt;</code>, <code>clear &lt;id|expired|all&gt;</code></td><td>level 2</td><td>Owner column in the list, teleport, reissue a key, expire now, remove and drop items. <code>clear</code> leaves <code>You have no active graves</code> for the owner.</td></tr>
         </tbody>
       </table>
       <p>
-        FabricProxy-Lite shares the Velocity forwarding secret. ViaFabric (alpha) and ViaBackwards (beta) let the
-        26.1 bots join. Bots can die and read chat but cannot right-click a grave, so opening a grave with its key is manual.
+        FabricProxy-Lite shares the Velocity forwarding secret. ViaFabric and ViaBackwards let the
+        26.1 bots join. Bots can die and read chat but cannot right-click a grave, so opening with a key is manual.
       </p>
     </section>
 

@@ -1,10 +1,10 @@
 # cairn
 
 Fabric server-side death graves for vanilla clients. When a player dies, their
-inventory is stored in a grave marker (Interaction + Item Display with a custom
-model) at or near the death position. They receive a transferable **grave key**
-that opens that grave. When the grave is emptied, it despawns with a short
-soul particle animation.
+inventory is stored on a world marker (a barrel; loot is virtual, not in the
+block) at or near the death position. They receive a transferable **grave key**
+that opens that grave. When the grave is emptied or expires, it despawns with a
+short soul particle animation.
 
 Who it is for: players who die far from home and need to find and recover their
 items without a client mod, and admins who need to locate or clean up graves.
@@ -46,7 +46,7 @@ docker compose -f testbed/docker-compose.yml --profile fabric up -d
 A prebuilt pack is at `testbed/resourcepacks/cairn-resourcepack.zip` (source:
 `cairn/resourcepack/`). The local Fabric testbed forces this pack on join via
 `server.properties` (`RESOURCE_PACK` + `RESOURCE_PACK_ENFORCE`), served from the
-docs nginx URL. Without the pack, clients still see a stone / trial-key placeholder.
+docs nginx URL. Without the pack, clients still see a barrel marker and a trial-key item.
 
 ## Install
 
@@ -112,13 +112,13 @@ Hand the key to a friend if you want them to recover your items.
 Unit tested (grave planning, registry, persistence, config, chat components, key helpers). Live Fabric
 scenarios are covered separately by the testbed Mineflayer suite when present.
 
-- Graves are entities; if something deletes them, `/cairn admin clear expired` drops leftover loot and forgets the record
+- If the marker block is removed, `/cairn admin clear expired` drops leftover loot and forgets the record
 - Vanishing-cursed items are stored in the grave instead of being destroyed
 - `xpPolicy: keep` holds the experience in memory until respawn, so a restart while a player is on the death screen loses it
 - Expiry loads the grave's chunk on the server thread; graves are saved on the server thread
 - `/cairn admin tp` stands one block above the grave without checking headroom
 - Items are moved before any later death-cancelling mod runs, so a mod that cancels the death after cairn leaves the items in the grave
 - Transferable keys mean anyone who holds a key can open that grave
-- Without the resource pack, the display uses a plain stone item and the key uses a trial key
-- Grave keys are not placeable (block/entity use is cancelled) so the key NBT cannot be stripped
-- Not done: action bar near your own grave, recovery compass, death cause in chat, metrics
+- Without the resource pack, the marker is still a barrel and the key is a trial key (custom models need the pack)
+- Grave keys are not placeable (use is cancelled) so the key NBT cannot be stripped by placing the item
+- Not covered yet: action bar near your own grave, recovery compass, death cause in chat, metrics

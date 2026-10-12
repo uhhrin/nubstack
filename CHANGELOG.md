@@ -17,7 +17,7 @@ git-cliff (`cliff.toml`) when a version tag is pushed.
 - Per-plugin READMEs and clarified aegis layout (`799d3fa`)
 - Hardened local Docker stack and plugin command docs (`db91345`)
 - GitHub Release workflow and local Velocity testbed (`de153a8`)
-- Remaining plugin MVPs: harbor, gatekeep, loom, spotlight, cull, ledger,
+- Remaining plugins: harbor, gatekeep, loom, spotlight, cull, ledger,
   amber, tether, cairn (`045ce03`)
 - Network moderation for Paper and Velocity in aegis (`26c9d23`)
 - spine config, database, redis, and text helpers (`013fc13`)

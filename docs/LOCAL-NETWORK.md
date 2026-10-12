@@ -2,7 +2,7 @@
 
 This document describes the Docker Velocity stack under `testbed/`, what ships
 in the monorepo, how pieces connect, and the player-facing commands for each
-plugin MVP.
+plugin.
 
 Live command guide (same content, HTML): after Compose is up, open
 [http://localhost:8080](http://localhost:8080).
@@ -23,10 +23,7 @@ Live command guide (same content, HTML): after Compose is up, open
 | `ledger` | Paper | Economy + ledger (`/bal`, `/pay`, `/ledger give`) |
 | `amber` | Paper | Async world snapshots |
 | `tether` | Paper | Discord link + chat bridge (needs bot token) |
-| `cairn` | Fabric | Death graves + keys (`--profile fabric`, `/server cairn`) |
-
-Status for all plugins above is **MVP**: commands and core paths exist; they are
-not production-hardened.
+| `cairn` | Fabric | Death graves + transferable keys (`--profile fabric`, `/server cairn`) |
 
 ### Testbed stack
 
@@ -205,9 +202,11 @@ Without a token the plugin still enables and logs that the Discord bridge is dis
 ### cairn (Fabric only)
 
 Not in the Compose Paper stack. On the Fabric profile (`/server cairn`): death
-places a key-gated grave marker, gives a transferable grave key on respawn, and
-tells the player the coordinates. Install `testbed/resourcepacks/cairn-resourcepack.zip`
-for the custom model.
+places a key-gated barrel marker (loot stays in the grave record), gives a
+transferable grave key on respawn, and tells the player the coordinates. Hold
+the matching key and right-click the marker to open. The Fabric service forces
+`testbed/site/resourcepacks/cairn-resourcepack.zip` (served by the docs host) for
+custom models.
 
 ### Velocity built-ins
 
@@ -215,6 +214,7 @@ for the custom model.
 | --- | --- |
 | `/server hub` | Switch to hub |
 | `/server minigame` | Switch to minigame (when profile is up) |
+| `/server cairn` | Switch to Fabric cairn (when profile is up) |
 | `/server` | List backends |
 
 ## Config and secrets map
