@@ -15,7 +15,7 @@ default generation and vanilla spawn (no schematics / WorldEdit).
 players / bots -> velocity:25565
                    |- hub (Paper, always on)
                    |- minigame (Paper, --profile minigame)
-                   |- cairn (Fabric, --profile fabric)  # death chests
+                   |- cairn (Fabric, --profile fabric)  # death graves + keys
 redis + mariadb shared for plugin configs
 docs -> http://localhost:8080
 ```
@@ -92,7 +92,15 @@ Optional Fabric backend for **cairn** (survival world; `/server cairn` from hub)
 docker compose -f testbed/docker-compose.yml --profile fabric up -d
 ```
 
-In game: `/server cairn`, die with items, check the grave message, `/server hub` to return.
+In game: `/server cairn`, die with items, hold the grave key, right-click the grave marker.
+
+**Resource pack (forced):** On `/server cairn` the client is prompted and must accept
+(`RESOURCE_PACK_ENFORCE=TRUE`). Pack source is `cairn/resourcepack/`; published copies live at
+`testbed/resourcepacks/cairn-resourcepack.zip` and `testbed/site/resourcepacks/` (docs nginx).
+URL default: `http://127.0.0.1:8080/resourcepacks/cairn-resourcepack.zip`.
+LAN clients: set `CAIRN_RESOURCE_PACK_URL` in `testbed/.env` to this host's LAN IP and refresh
+`CAIRN_RESOURCE_PACK_SHA1` after rebuilding the zip (`sha1sum testbed/site/resourcepacks/cairn-resourcepack.zip`).
+
 FabricProxy-Lite uses `FABRIC_PROXY_SECRET` matching `velocity/forwarding.secret`.
 ViaFabric (alpha) + ViaBackwards (beta) are installed for Mineflayer 26.1; prefer a real 26.2 client for cairn.
 

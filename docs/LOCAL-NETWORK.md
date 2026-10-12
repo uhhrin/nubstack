@@ -23,7 +23,7 @@ Live command guide (same content, HTML): after Compose is up, open
 | `ledger` | Paper | Economy + ledger (`/bal`, `/pay`, `/ledger give`) |
 | `amber` | Paper | Async world snapshots |
 | `tether` | Paper | Discord link + chat bridge (needs bot token) |
-| `cairn` | Fabric | Death chests (not loaded in the Paper/Velocity Compose stack) |
+| `cairn` | Fabric | Death graves + keys (`--profile fabric`, `/server cairn`) |
 
 Status for all plugins above is **MVP**: commands and core paths exist; they are
 not production-hardened.
@@ -35,6 +35,7 @@ not production-hardened.
 | `velocity` | itzg/mc-proxy | Always on, host port `25565` |
 | `hub` | Paper 26.2 | Always on, creative, plain world spawn |
 | `minigame` | Paper 26.2 | Profile `minigame` only |
+| `fabric` | Fabric 26.2 + cairn | Profile `fabric` only (`/server cairn`) |
 | `mariadb` | MariaDB 11 | Shared SQL (`nubstack` + `aegis` DBs) |
 | `redis` | Redis 7 | Punishment sync (aegis) |
 | `docs` | nginx | Static guide on host port `8080` |
@@ -203,8 +204,10 @@ Without a token the plugin still enables and logs that the Discord bridge is dis
 
 ### cairn (Fabric only)
 
-Not in the Compose Paper stack. On a Fabric dedicated server: death places a
-temporary chest and tells the player the grave coordinates.
+Not in the Compose Paper stack. On the Fabric profile (`/server cairn`): death
+places a key-gated grave marker, gives a transferable grave key on respawn, and
+tells the player the coordinates. Install `testbed/resourcepacks/cairn-resourcepack.zip`
+for the custom model.
 
 ### Velocity built-ins
 

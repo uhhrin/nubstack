@@ -89,6 +89,7 @@ services:
     ports:
       - "${DOCS_HOST_PORT:-8080}:80"
     volumes:
+      # Includes site/resourcepacks/cairn-resourcepack.zip for the Fabric forced pack URL.
       - ./site:/usr/share/nginx/html:ro
     networks: [nubstack]
 
@@ -157,13 +158,15 @@ services:
     networks: [nubstack]
 
   # Optional Fabric backend for cairn. Enable with: --profile fabric
-  # Survival so death chests can be exercised (hub stays creative).
+  # Survival so death graves can be exercised (hub stays creative).
   fabric:
     profiles: ["fabric"]
     image: itzg/minecraft-server:java25
     restart: unless-stopped
     cpus: ${PAPER_CPUS:-1.5}
     mem_limit: ${FABRIC_MEM_LIMIT:-1280m}
+    depends_on:
+      - docs
     environment:
       EULA: "TRUE"
       TYPE: FABRIC
@@ -190,6 +193,15 @@ services:
       MODRINTH_DOWNLOAD_DEPENDENCIES: required
       # Env secret (not FILE): FabricProxy-Lite trims poorly with trailing newlines on file mounts.
       FABRIC_PROXY_SECRET: ${VELOCITY_FORWARDING_SECRET:-nubstack-forwarding-secret}
+      # Forced cairn pack (clients download from the docs host URL, not the fabric container).
+      # Default assumes you join from the same machine as the testbed. LAN players: set
+      # CAIRN_RESOURCE_PACK_URL to http://<this-host-lan-ip>:8080/resourcepacks/cairn-resourcepack.zip
+      # and refresh CAIRN_RESOURCE_PACK_SHA1 after regenerating the zip.
+      RESOURCE_PACK: ${CAIRN_RESOURCE_PACK_URL:-http://127.0.0.1:8080/resourcepacks/cairn-resourcepack.zip}
+      RESOURCE_PACK_SHA1: ${CAIRN_RESOURCE_PACK_SHA1:-09f14f7c7a941c7a3fdea52ae95c16beb90a912f}
+      RESOURCE_PACK_ENFORCE: ${CAIRN_RESOURCE_PACK_ENFORCE:-TRUE}
+      # Must be a JSON text component (itzg writes it into resource-pack-prompt).
+      RESOURCE_PACK_PROMPT: ${CAIRN_RESOURCE_PACK_PROMPT:-{"text":"cairn graves need this pack for custom models"}}
     volumes:
       - fabric-data:/data
       - ./plugins/fabric:/mods:ro

@@ -68,7 +68,7 @@ Build wrapper for machines with an old default JDK:
 | `ledger` | MVP | `/bal`, `/pay`, `/ledger give` |
 | `amber` | MVP | World snapshot + list |
 | `tether` | MVP | Discord link/bridge; idle without bot token |
-| `cairn` | MVP | Fabric death chests; not in Compose Paper stack |
+| `cairn` | MVP | Fabric death graves (key + display); Fabric testbed profile |
 
 Honest limitation: these are showcase MVPs. They are not claimed as
 production-complete, fully live-verified product suites.

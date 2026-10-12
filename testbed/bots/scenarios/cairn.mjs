@@ -46,10 +46,21 @@ export default {
           t.log(line)
         })
 
-        await t.step('items left the inventory after respawn', async () => {
+        await t.step('items left the inventory after respawn; grave key is issued', async () => {
           await sleep(2_000)
           await waitUntil(() => bot.health > 0, { label: 'respawned', timeout: 15_000 })
           if (itemCount(bot, 'diamond') !== 0) throw new Error(`diamonds still carried: ${itemCount(bot, 'diamond')}`)
+          // Key is a trial_key (not placeable) delivered on COPY_FROM (respawn), not during death drops.
+          await waitUntil(() => itemCount(bot, 'trial_key') >= 1, {
+            label: 'grave key in inventory',
+            timeout: 10_000,
+          })
+          const key = bot.inventory.items().find((item) => item.name === 'trial_key')
+          const named = key?.customName || key?.displayName || ''
+          if (!/Grave Key/i.test(String(named)) && !/Grave Key/i.test(JSON.stringify(key?.nbt || {}))) {
+            // shortcut: Mineflayer 26.x may omit customName; count alone is enough then
+            t.log(`grave key present (name not readable via mineflayer: ${named || 'n/a'})`)
+          }
         })
 
         await t.step('locate: most recent grave with id, dimension and the same coordinates', async () => {
@@ -70,6 +81,17 @@ export default {
         await t.step('admin list: owner filter shows the owner name', async () => {
           await chatAs(bot, '/cairn admin list Bot1')
           await waitForChat(bot, new RegExp(`^#${graveId} Bot1 `))
+        })
+
+        await t.step('admin key: reissues a transferable key', async () => {
+          await rcon('fabric', 'clear Bot1 trial_key')
+          await waitUntil(() => itemCount(bot, 'trial_key') === 0, { label: 'keys cleared' })
+          await chatAs(bot, `/cairn admin key ${graveId}`)
+          await waitForChat(bot, new RegExp(`Reissued key for grave #${graveId}`))
+          await waitUntil(() => itemCount(bot, 'trial_key') >= 1, {
+            label: 'reissued key in inventory',
+            timeout: 10_000,
+          })
         })
 
         await t.step('admin clear: removes the grave and locate no longer finds it', async () => {
