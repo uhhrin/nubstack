@@ -1,0 +1,13 @@
+default-server: survival
+queue-servers:
+  - survival
+priority-permissions:
+  harbor.priority.vip: 10
+  harbor.priority.staff: 50
+health-interval-seconds: 15
+# Server list ping timeout (Velocity PingOptions).
+health-timeout-millis: 3000
+# Consecutive failed/successful pings before flipping health (hysteresis).
+health-fail-threshold: 2
+health-success-threshold: 2
+max-queue-size: 200

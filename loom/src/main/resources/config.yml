@@ -1,0 +1,21 @@
+database:
+  jdbc-url: jdbc:mariadb://localhost:3306/nubstack
+  username: nubstack
+  password: change-me
+  pool-size: 5
+
+# Unique name of this backend, for example hub or minigame. Every server sharing the
+# database needs a different value. Blank falls back to port-<server port>.
+# Changing it needs a restart.
+server-id: ""
+
+# Seconds a sync lease stays valid without renewal (minimum 5). A crashed server blocks
+# its players for at most this long. Held leases are renewed every third of this.
+lock-seconds: 30
+
+# Seconds a joining player waits for another server to release the lease (minimum 1).
+wait-seconds: 10
+
+# What happens when the wait runs out: kick, join-empty or keep-local.
+# join-empty and keep-local never save that session, so stored items are not overwritten.
+failure-policy: kick

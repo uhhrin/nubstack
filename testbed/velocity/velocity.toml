@@ -1,0 +1,35 @@
+config-version = "2.7"
+bind = "0.0.0.0:25577"
+motd = "<gradient:aqua:blue>nubstack</gradient> <gray>local network</gray>"
+show-max-players = 50
+online-mode = false
+force-key-authentication = false
+player-info-forwarding-mode = "modern"
+forwarding-secret-file = "forwarding.secret"
+announce-forge = false
+kick-existing-players = false
+ping-passthrough = "DISABLED"
+
+[servers]
+hub = "hub:25565"
+minigame = "minigame:25565"
+cairn = "fabric:25565"
+try = ["hub"]
+
+[forced-hosts]
+
+[advanced]
+compression-threshold = 256
+compression-level = -1
+login-ratelimit = 0
+connection-timeout = 5000
+read-timeout = 30000
+haproxy-protocol = false
+tcp-fast-open = false
+bcast-ping-interval = -1
+
+[query]
+enabled = false
+port = 25577
+map = "nubstack"
+show-plugins = false

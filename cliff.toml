@@ -1,0 +1,55 @@
+# git-cliff config for Conventional Commits release notes.
+# https://git-cliff.org/docs/configuration
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+"""
+body = """
+{% if version %}\
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}\
+{% if commit.breaking %}**breaking:** {% endif %}\
+{{ commit.message | upper_first }}
+{% endfor %}
+{% endfor %}
+"""
+trim = true
+render_always = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+require_conventional = false
+split_commits = false
+protect_breaking_commits = true
+commit_parsers = [
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Changed" },
+  { message = "^refactor", group = "Changed" },
+  { message = "^doc", group = "Changed" },
+  { message = "^style", skip = true },
+  { message = "^test", skip = true },
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^chore\\(deps", skip = true },
+  { message = "^chore|^ci", group = "Changed" },
+  { message = "^revert", group = "Fixed" },
+  { body = ".*security", group = "Security" },
+  { message = "^merge", skip = true },
+  { message = ".*", skip = true },
+]
+# Tags look like nubstack-v0.1.0 or harbor-v0.1.0 (not bare v0.1.0).
+tag_pattern = "[\\w-]+-v[0-9].*"
+filter_commits = false
+topo_order = false
+sort_commits = "newest"

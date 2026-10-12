@@ -1,0 +1,35 @@
+name: tether
+version: ${version}
+main: dev.nubstack.tether.TetherPlugin
+api-version: '26.2'
+authors: [nubstack]
+description: Discord account linking and chat bridge
+commands:
+  tether:
+    description: Link your Discord account and manage the bridge
+    usage: /tether [help|link|cancel|status|unlink]
+    aliases: [link, discord]
+permissions:
+  tether.link:
+    description: Use /tether link, cancel, status, and unlink
+    default: true
+  tether.admin.lookup:
+    description: Look up a link by player or Discord id
+    default: op
+  tether.admin.unlink:
+    description: Force unlink a player
+    default: op
+  tether.admin.codes:
+    description: List pending link codes
+    default: op
+  tether.admin.reload:
+    description: Reload config.yml
+    default: op
+  tether.admin.*:
+    description: All tether staff commands
+    default: op
+    children:
+      tether.admin.lookup: true
+      tether.admin.unlink: true
+      tether.admin.codes: true
+      tether.admin.reload: true

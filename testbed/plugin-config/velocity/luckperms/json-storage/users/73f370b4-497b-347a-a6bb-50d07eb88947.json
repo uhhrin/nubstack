@@ -1,0 +1,10 @@
+{
+  "uuid": "73f370b4-497b-347a-a6bb-50d07eb88947",
+  "name": "Bot3",
+  "primaryGroup": "vip",
+  "permissions": [
+    {
+      "group.vip": true
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+name: aegis
+version: ${version}
+main: dev.nubstack.aegis.paper.AegisPaperPlugin
+api-version: '26.2'
+authors: [nubstack]
+description: Network bans, mutes, warnings with Redis sync
+commands:
+  aegis:
+    description: Network moderation commands
+    usage: /aegis <ban|unban|mute|unmute|warn|history|check|reason|rollback|lookup|reload>
+    permission: aegis.use
+  gban:
+    description: Alias for /aegis ban
+    permission: aegis.ban
+  gmute:
+    description: Alias for /aegis mute
+    permission: aegis.mute
+  gunban:
+    description: Alias for /aegis unban
+    permission: aegis.unban
+  gwarn:
+    description: Alias for /aegis warn
+    permission: aegis.warn
+  hist:
+    description: Alias for /aegis history
+    permission: aegis.history
+  checkpunish:
+    description: Alias for /aegis check
+    permission: aegis.history
+permissions:
+  aegis.use:
+    default: op
+  aegis.ban:
+    default: op
+  aegis.unban:
+    default: op
+  aegis.mute:
+    default: op
+  aegis.unmute:
+    default: op
+  aegis.warn:
+    default: op
+  aegis.history:
+    default: op
+  aegis.reload:
+    default: op

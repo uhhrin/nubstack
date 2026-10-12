@@ -26,7 +26,6 @@ Thumbs.db
 
 # Local / secrets
 .env
-.env.*
 *.log
 local.properties
 *.pem
@@ -36,7 +35,13 @@ local.properties
 testbed/data/
 testbed/logs/
 testbed/cache/
-testbed/plugins/*.jar
+testbed/plugins/**/*.jar
+# Staged by sync-plugins.sh from plugin-config/ (do not commit)
+testbed/plugins/paper/*/
+testbed/plugins/velocity/*/
+testbed/bots/node_modules/
+testbed/bots/package-lock.json
+
 run/
 logs/
 crash-reports/
@@ -51,6 +56,9 @@ AGENT*.md
 skills-lock.json
 *.local.md
 .ponytail/
+
+# Local product ideation (not for git / releases)
+improvements/
 
 # Node harness (Mineflayer) install trees
 node_modules/

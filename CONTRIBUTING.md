@@ -71,5 +71,5 @@ A change is done when:
 
 ## Releases
 
-Plugin jars are published from GitHub Actions on version tags.
+Plugin jars are published from GitHub Actions on merge to `main` or version tags.
 See `.github/workflows/release.yml`.

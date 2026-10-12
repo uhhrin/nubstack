@@ -1,0 +1,17 @@
+database:
+  jdbc-url: jdbc:mariadb://mariadb:3306/aegis
+  username: nubstack
+  password: nubstack
+  pool-size: 2
+
+redis:
+  host: redis
+  port: 6379
+  password: ""
+
+discord:
+  webhook-url: ""
+
+messages:
+  banned: "<red>You are banned: <reason></red>"
+  muted: "<red>You are muted: <reason></red>"

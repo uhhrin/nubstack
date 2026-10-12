@@ -1,0 +1,233 @@
+# Local Velocity network: proxy + Paper hub (+ optional minigame) + Redis + MariaDB + docs.
+# Join at localhost:${PROXY_HOST_PORT:-25565} (offline mode for Mineflayer bots).
+# Docs: http://localhost:${DOCS_HOST_PORT:-8080}
+#
+# Default stack is intentionally light: one Paper backend.
+# Optional backends:
+#   docker compose -f testbed/docker-compose.yml --profile minigame up -d
+#   docker compose -f testbed/docker-compose.yml --profile fabric up -d
+#     then in-game: /server cairn
+#
+# Usage:
+#   cp testbed/.env.example testbed/.env   # optional
+#   ./scripts/use-java.sh ./gradlew build
+#   ./testbed/scripts/sync-plugins.sh
+#   docker compose -f testbed/docker-compose.yml up -d
+#
+# Wipe broken world volumes:
+#   docker compose -f testbed/docker-compose.yml down -v
+
+x-paper-env: &paper-env
+  EULA: "TRUE"
+  TYPE: PAPER
+  VERSION: ${MC_VERSION:-26.2}
+  ONLINE_MODE: "FALSE"
+  DIFFICULTY: peaceful
+  MODE: creative
+  SPAWN_PROTECTION: "0"
+  ENABLE_RCON: "true"
+  RCON_PASSWORD: ${RCON_PASSWORD:-nubstack}
+  RCON_PORT: 25575
+  FORCE_GAMEMODE: "true"
+  VIEW_DISTANCE: ${VIEW_DISTANCE:-4}
+  SIMULATION_DISTANCE: ${SIMULATION_DISTANCE:-4}
+  MAX_PLAYERS: ${MAX_PLAYERS:-10}
+  SPAWN_MONSTERS: "false"
+  SPAWN_ANIMALS: "false"
+  SPAWN_NPCS: "false"
+  USE_AIKAR_FLAGS: "false"
+  JVM_XX_OPTS: "-XX:ActiveProcessorCount=${PAPER_CPU_COUNT:-2} -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+  PAPER_VELOCITY_ENABLED: "true"
+  PAPER_VELOCITY_ONLINE_MODE: "false"
+  PAPER_VELOCITY_SECRET: ${VELOCITY_FORWARDING_SECRET:-nubstack-forwarding-secret}
+  # Mineflayer currently tops out at 26.1; ViaBackwards lets those bots join 26.2.
+  MODRINTH_PROJECTS: viaversion,viabackwards
+  # Interpolate ${CFG_*} placeholders while syncing plugin configs from /plugins.
+  REPLACE_ENV_DURING_SYNC: "true"
+  CFG_TETHER_DISCORD_TOKEN: ${TETHER_DISCORD_TOKEN:-}
+  CFG_TETHER_DISCORD_CHANNEL_ID: ${TETHER_DISCORD_CHANNEL_ID:-}
+  CFG_TETHER_DISCORD_GUILD_ID: ${TETHER_DISCORD_GUILD_ID:-}
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 128m
+    networks: [nubstack]
+
+  mariadb:
+    image: mariadb:11
+    restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 512m
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-nubstack}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-nubstack}
+      MARIADB_USER: ${MARIADB_USER:-nubstack}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-nubstack}
+      MARIADB_AUTO_UPGRADE: "1"
+    command:
+      - --innodb-buffer-pool-size=128M
+      - --performance-schema=OFF
+      - --max-connections=150
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./mariadb/init:/docker-entrypoint-initdb.d:ro
+    networks: [nubstack]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  docs:
+    image: nginx:alpine
+    restart: unless-stopped
+    cpus: 0.1
+    mem_limit: 32m
+    ports:
+      - "${DOCS_HOST_PORT:-8080}:80"
+    volumes:
+      # Includes site/resourcepacks/cairn-resourcepack.zip for the Fabric forced pack URL.
+      - ./site:/usr/share/nginx/html:ro
+    networks: [nubstack]
+
+  velocity:
+    image: itzg/mc-proxy:latest
+    restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 384m
+    depends_on:
+      - hub
+    ports:
+      - "${PROXY_HOST_PORT:-25565}:25577"
+    environment:
+      TYPE: VELOCITY
+      MEMORY: ${VELOCITY_MEMORY:-256M}
+      JVM_XX_OPTS: "-XX:ActiveProcessorCount=1"
+      # Velocity has no op list. LuckPerms gives the Mineflayer bots staff nodes for
+      # /aegis, /gatekeep and /harbor admin (see plugin-config/velocity/luckperms).
+      MINECRAFT_VERSION: ${MC_VERSION:-26.2}
+      MODRINTH_PROJECTS: luckperms
+    volumes:
+      - ./velocity/velocity.toml:/config/velocity.toml:ro
+      - ./velocity/forwarding.secret:/config/forwarding.secret:ro
+      - ./plugins/velocity:/plugins:ro
+      - velocity-data:/server
+    networks: [nubstack]
+
+  hub:
+    image: itzg/minecraft-server:java25
+    restart: unless-stopped
+    cpus: ${PAPER_CPUS:-1.5}
+    mem_limit: ${HUB_MEM_LIMIT:-1280m}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      <<: *paper-env
+      MEMORY: ${HUB_MEMORY:-1G}
+    volumes:
+      - hub-data:/data
+      - ./plugins/paper:/plugins:ro
+      - ./config:/config:ro
+    networks: [nubstack]
+
+  # Optional second backend. Enable with: --profile minigame
+  minigame:
+    profiles: ["minigame"]
+    image: itzg/minecraft-server:java25
+    restart: unless-stopped
+    cpus: ${PAPER_CPUS:-1.5}
+    mem_limit: ${MINIGAME_MEM_LIMIT:-1280m}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      <<: *paper-env
+      MEMORY: ${MINIGAME_MEMORY:-1G}
+    volumes:
+      - minigame-data:/data
+      - ./plugins/paper:/plugins:ro
+      - ./config:/config:ro
+    networks: [nubstack]
+
+  # Optional Fabric backend for cairn. Enable with: --profile fabric
+  # Survival so death graves can be exercised (hub stays creative).
+  fabric:
+    profiles: ["fabric"]
+    image: itzg/minecraft-server:java25
+    restart: unless-stopped
+    cpus: ${PAPER_CPUS:-1.5}
+    mem_limit: ${FABRIC_MEM_LIMIT:-1280m}
+    depends_on:
+      - docs
+    environment:
+      EULA: "TRUE"
+      TYPE: FABRIC
+      VERSION: ${MC_VERSION:-26.2}
+      ONLINE_MODE: "FALSE"
+      DIFFICULTY: peaceful
+      MODE: survival
+      SPAWN_PROTECTION: "0"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: ${RCON_PASSWORD:-nubstack}
+      RCON_PORT: 25575
+      FORCE_GAMEMODE: "true"
+      VIEW_DISTANCE: ${VIEW_DISTANCE:-4}
+      SIMULATION_DISTANCE: ${SIMULATION_DISTANCE:-4}
+      MAX_PLAYERS: ${MAX_PLAYERS:-10}
+      SPAWN_MONSTERS: "false"
+      SPAWN_ANIMALS: "false"
+      SPAWN_NPCS: "false"
+      USE_AIKAR_FLAGS: "false"
+      JVM_XX_OPTS: "-XX:ActiveProcessorCount=${PAPER_CPU_COUNT:-2} -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+      MEMORY: ${FABRIC_MEMORY:-1G}
+      # ViaFabric is alpha-only for 26.x; pin channel so Modrinth resolve succeeds.
+      MODRINTH_PROJECTS: fabric-api,fabricproxy-lite,viafabric:alpha,viabackwards:beta
+      MODRINTH_DOWNLOAD_DEPENDENCIES: required
+      # Env secret (not FILE): FabricProxy-Lite trims poorly with trailing newlines on file mounts.
+      FABRIC_PROXY_SECRET: ${VELOCITY_FORWARDING_SECRET:-nubstack-forwarding-secret}
+      # Forced cairn pack (clients download from the docs host URL, not the fabric container).
+      # Default assumes you join from the same machine as the testbed. LAN players: set
+      # CAIRN_RESOURCE_PACK_URL to http://<this-host-lan-ip>:8080/resourcepacks/cairn-resourcepack.zip
+      # and refresh CAIRN_RESOURCE_PACK_SHA1 after regenerating the zip.
+      RESOURCE_PACK: ${CAIRN_RESOURCE_PACK_URL:-http://127.0.0.1:8080/resourcepacks/cairn-resourcepack.zip}
+      RESOURCE_PACK_SHA1: ${CAIRN_RESOURCE_PACK_SHA1:-09f14f7c7a941c7a3fdea52ae95c16beb90a912f}
+      RESOURCE_PACK_ENFORCE: ${CAIRN_RESOURCE_PACK_ENFORCE:-TRUE}
+      # Must be a JSON text component (itzg writes it into resource-pack-prompt).
+      RESOURCE_PACK_PROMPT: ${CAIRN_RESOURCE_PACK_PROMPT:-{"text":"cairn graves need this pack for custom models"}}
+    volumes:
+      - fabric-data:/data
+      - ./plugins/fabric:/mods:ro
+    networks: [nubstack]
+
+  bots:
+    image: node:22-alpine
+    profiles: ["bots"]
+    working_dir: /bots
+    depends_on:
+      - velocity
+    environment:
+      PROXY_HOST: velocity
+      PROXY_PORT: "25577"
+      BOT_COUNT: ${BOT_COUNT:-3}
+    volumes:
+      - ./bots:/bots
+    command: ["sh", "-c", "npm install && npm run smoke"]
+    networks: [nubstack]
+
+networks:
+  nubstack:
+
+volumes:
+  velocity-data:
+  hub-data:
+  minigame-data:
+  fabric-data:
+  mariadb-data:

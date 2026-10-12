@@ -8,7 +8,19 @@ allprojects {
 }
 
 subprojects {
-    apply(plugin = "java")
+    // Fabric Loom owns the cairn project model; do not force java-library onto it.
+    if (name == "cairn") {
+        return@subprojects
+    }
+
+    apply(plugin = "java-library")
+
+    repositories {
+        mavenCentral()
+        maven("https://repo.papermc.io/repository/maven-public/")
+        maven("https://maven.fabricmc.net/")
+        maven("https://jitpack.io")
+    }
 
     extensions.configure<JavaPluginExtension> {
         val javaVersion = JavaVersion.toVersion(providers.gradleProperty("javaVersion").get())
@@ -31,5 +43,7 @@ subprojects {
     dependencies {
         "testImplementation"(platform("org.junit:junit-bom:5.11.4"))
         "testImplementation"("org.junit.jupiter:junit-jupiter")
+        // Gradle 9+ test workers need the launcher on the runtime classpath.
+        "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
     }
 }

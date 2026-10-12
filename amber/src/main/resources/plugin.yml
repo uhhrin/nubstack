@@ -1,0 +1,18 @@
+name: amber
+version: ${version}
+main: dev.nubstack.amber.AmberPlugin
+api-version: '26.2'
+authors: [nubstack]
+description: World snapshots with progress, retention, and confirmed restore
+commands:
+  amber:
+    description: Snapshot, list, restore, and prune worlds
+    usage: /amber [snapshot|list|info|restore|delete|prune|cancel|reload]
+    permission: amber.use
+permissions:
+  amber.use:
+    description: Run /amber (subcommands still need amber.admin)
+    default: op
+  amber.admin:
+    description: Create, list, restore, delete, prune, cancel, and reload
+    default: op

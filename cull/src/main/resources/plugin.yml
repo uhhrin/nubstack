@@ -1,0 +1,18 @@
+name: cull
+version: ${version}
+main: dev.nubstack.cull.CullPlugin
+api-version: '26.2'
+authors: [nubstack]
+description: Per-chunk mob limits and cleanup
+commands:
+  cull:
+    description: Chunk entity caps, scans and cleanup
+    usage: /cull [status|scan|here|tp|run|reload]
+    permission: cull.use
+permissions:
+  cull.use:
+    description: Help, status, scan, here and tp
+    default: op
+  cull.admin:
+    description: Run cleanup now and reload config
+    default: op

@@ -1,0 +1,18 @@
+database:
+  jdbc-url: jdbc:mariadb://localhost:3306/nubstack
+  username: nubstack
+  password: change-me
+  pool-size: 5
+discord:
+  token: ""
+  channel-id: ""
+  guild-id: ""
+  prefer-slash-commands: true
+  outbound-queue-capacity: 64
+link:
+  code-length: 8
+  ttl-seconds: 300
+  max-redeem-attempts: 5
+  clipboard-payload: full
+gate:
+  mode: "off"

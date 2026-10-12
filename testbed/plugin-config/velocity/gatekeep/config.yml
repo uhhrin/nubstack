@@ -1,0 +1,3 @@
+max-attempts: 30
+window-seconds: 60
+deny-message: "<red>Too many connections. Try again later.</red>"

@@ -1,0 +1,4 @@
+CREATE DATABASE IF NOT EXISTS aegis;
+GRANT ALL PRIVILEGES ON aegis.* TO 'nubstack'@'%';
+GRANT ALL PRIVILEGES ON nubstack.* TO 'nubstack'@'%';
+FLUSH PRIVILEGES;

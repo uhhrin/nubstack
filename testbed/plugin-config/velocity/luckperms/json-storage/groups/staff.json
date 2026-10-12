@@ -1,0 +1,38 @@
+{
+  "name": "staff",
+  "permissions": [
+    {
+      "aegis.use": true
+    },
+    {
+      "aegis.ban": true
+    },
+    {
+      "aegis.unban": true
+    },
+    {
+      "aegis.mute": true
+    },
+    {
+      "aegis.unmute": true
+    },
+    {
+      "aegis.warn": true
+    },
+    {
+      "aegis.history": true
+    },
+    {
+      "aegis.reload": true
+    },
+    {
+      "gatekeep.admin": true
+    },
+    {
+      "harbor.admin": true
+    },
+    {
+      "harbor.priority.staff": true
+    }
+  ]
+}

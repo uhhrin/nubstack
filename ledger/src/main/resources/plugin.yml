@@ -1,0 +1,31 @@
+name: ledger
+version: ${version}
+main: dev.nubstack.ledger.LedgerPlugin
+api-version: '26.2'
+authors: [nubstack]
+description: Vault-compatible economy with ledger
+commands:
+  bal:
+    description: Show balance
+    aliases: [balance, money]
+    permission: ledger.use
+  pay:
+    description: Pay another player
+    permission: ledger.use
+  baltop:
+    description: Economy leaderboard
+    permission: ledger.use
+  ledger:
+    description: Ledger help and admin tools
+    permission: ledger.use
+permissions:
+  ledger.use:
+    default: true
+    description: Balance, pay, own history, receipt, top
+  ledger.admin:
+    default: op
+    description: Give, take, set, reload, view others' history
+  ledger.audit:
+    default: op
+    description: View others' history and receipts without full admin
+softdepend: [Vault]

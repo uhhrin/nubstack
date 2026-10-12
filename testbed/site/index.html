@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>nubstack testbed guide</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <p class="brand">nubstack</p>
+    <h1>Local network test guide</h1>
+    <p class="lede">
+      Shipped commands, permissions, and the chat output to expect on the Docker
+      Velocity stack (hub, optional minigame, optional Fabric). Join
+      <code>localhost:25565</code> with vanilla Minecraft <strong>26.2</strong>, or
+      run the Mineflayer suite from the command line.
+    </p>
+    <nav class="toc">
+      <a href="#setup">Setup</a>
+      <a href="#bots">Mineflayer suite</a>
+      <a href="#aegis">aegis</a>
+      <a href="#harbor">harbor</a>
+      <a href="#gatekeep">gatekeep</a>
+      <a href="#loom">loom</a>
+      <a href="#spotlight">spotlight</a>
+      <a href="#cull">cull</a>
+      <a href="#ledger">ledger</a>
+      <a href="#amber">amber</a>
+      <a href="#tether">tether</a>
+      <a href="#cairn">cairn</a>
+      <a href="#velocity">Velocity</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="setup">
+      <h2>Setup checklist</h2>
+      <ol>
+        <li><code>./scripts/use-java.sh ./gradlew build</code></li>
+        <li><code>cp testbed/.env.example testbed/.env</code> (optional overrides)</li>
+        <li><code>./testbed/scripts/sync-plugins.sh</code></li>
+        <li><code>docker compose -f testbed/docker-compose.yml up -d</code></li>
+        <li>Join <code>localhost:25565</code> (plain vanilla spawn on hub).</li>
+        <li>
+          Optional backends:
+          <code>docker compose -f testbed/docker-compose.yml --profile minigame up -d</code>
+          (then <code>/server minigame</code>) and
+          <code>docker compose -f testbed/docker-compose.yml --profile fabric up -d</code>
+          (then <code>/server cairn</code>).
+        </li>
+        <li><code>./testbed/scripts/seed-demo.sh [your-ign]</code> ops the bots and your name on every running backend and sets starting ledger balances.</li>
+      </ol>
+      <h3>Permissions on Paper and on Velocity</h3>
+      <p>
+        Paper commands that default to <code>op</code> need <code>/op</code> on the backend you are standing on
+        (<code>./testbed/scripts/wait-and-op.sh your-ign</code> does it for hub, minigame and fabric).
+        Velocity has no op list, so <code>/aegis</code>, <code>/gatekeep</code> and
+        <code>/harbor admin</code> need a permission plugin. The testbed installs
+        <strong>LuckPerms</strong> on Velocity with JSON storage and three seeded bots:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Bot</th><th>Group</th><th>Velocity nodes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Bot1</code></td><td>staff</td><td><code>aegis.*</code> subcommand nodes, <code>gatekeep.admin</code>, <code>harbor.admin</code>, <code>harbor.priority.staff</code></td></tr>
+          <tr><td><code>Bot2</code></td><td>default</td><td>none</td></tr>
+          <tr><td><code>Bot3</code></td><td>vip</td><td><code>harbor.priority.vip</code></td></tr>
+        </tbody>
+      </table>
+      <p>
+        Your own name is not seeded in git. <code>./testbed/scripts/seed-demo.sh your-ign</code> writes a staff
+        user file into the running Velocity container so your account can run the same commands.
+        Without that, a Velocity command you may not use falls through to the backend and prints
+        <code>Incorrect argument for command</code> or <code>Unknown or incomplete command</code>.
+      </p>
+      <div class="callout">
+        <strong>Honest status:</strong> Mineflayer joins as protocol 26.1 and ViaBackwards (and ViaFabric on
+        Fabric) translate to 26.2, so a real 26.2 client is the better check for anything visual.
+        Click-to-copy, hover text and the resource pack are not asserted by bots; they are covered by Java
+        unit tests or a manual look. When the Tether Discord bot is configured in <code>testbed/.env</code>,
+        its chat bridge forwards bot chat and joins to that Discord channel; blank the three
+        <code>TETHER_DISCORD_*</code> variables for quiet runs.
+      </div>
+      <h3>Low memory hosts</h3>
+      <p>
+        Each Paper or Fabric container is capped at 1280 MiB. When the host swap is full, the kernel can kill a
+        backend JVM at startup (Docker shows it restarting, <code>dmesg</code> shows a memory cgroup kill). Lower the heap with
+        <code>HUB_MEMORY=768M</code>, <code>MINIGAME_MEMORY=768M</code>, <code>FABRIC_MEMORY=768M</code> in <code>testbed/.env</code>,
+        or stop a backend you are not using.
+      </p>
+    </section>
+
+    <section id="bots">
+      <h2>Mineflayer suite <span class="tag">CLI</span></h2>
+      <p>
+        Black-box bots join through the proxy with offline auth, run the shipped commands, and assert chat text,
+        action bars, kicks and inventory. There is no web runner; use the command line from the host.
+      </p>
+      <pre><code>cd testbed/bots
+npm install
+npm run smoke            # three bots join (join/spawn only)
+npm run test:ledger      # one plugin
+npm run test:all         # whole suite in order, stops at the first failure
+npm run test:all -- --continue   # keep going and report every failure</code></pre>
+      <table>
+        <thead>
+          <tr><th>Script</th><th>Needs</th><th>What it proves</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>smoke</code></td><td>hub</td><td>Three bots join through Velocity.</td></tr>
+          <tr><td><code>test:ledger</code></td><td>hub</td><td>give, bal, <code>/money</code>, pay, receiver action bar, insufficient funds, invalid amounts, confirm prompt, history, receipt, baltop, take, non-admin denied.</td></tr>
+          <tr><td><code>test:spotlight</code></td><td>hub</td><td>Hopper fixture, scan, here (3 hoppers x8), near, weights, non-op denied.</td></tr>
+          <tr><td><code>test:cull</code></td><td>hub</td><td>Overspawn chickens, lower the cap, status/scan over cap, <code>/cull run</code>, counters. Restores the config.</td></tr>
+          <tr><td><code>test:amber</code></td><td>hub</td><td>snapshot, list, info, path traversal rejected, restore prompt, prune, cancel. Removes its snapshot.</td></tr>
+          <tr><td><code>test:tether</code></td><td>hub, <code>TETHER_LIVE=1</code></td><td>link card, reuse and renew, status, admin codes, cancel, unlink when unlinked. The Discord side is manual.</td></tr>
+          <tr><td><code>test:aegis</code></td><td>hub</td><td>warn, history, mute and blocked chat, unmute, ban and kick, reconnect denied, unban, non-staff denied.</td></tr>
+          <tr><td><code>test:loom</code></td><td>hub, minigame</td><td>Items follow hub to minigame with the restore action bar, status, force-save, rapid switching without kicks or duplicates.</td></tr>
+          <tr><td><code>test:harbor</code></td><td>hub, minigame</td><td>status shape, list, leave, admin pause, queued join, vip priority, kickqueue, clear, resume and direct join.</td></tr>
+          <tr><td><code>test:gatekeep</code></td><td>hub</td><td>Strict overlay (3 attempts), burst deny with a support code, check, status, clear, default config restored.</td></tr>
+          <tr><td><code>test:cairn</code></td><td>hub, fabric</td><td><code>/server cairn</code>, die with items, grave key on respawn, locate, list, admin list, admin key, admin clear.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Scenarios skip with a reason when a backend is not running. Environment variables:
+        <code>PROXY_HOST</code>, <code>PROXY_PORT</code>, <code>BOT_VERSION</code> (default <code>26.1</code>),
+        <code>BOT_SEND_GAP_MS</code> (default 350, spacing between one bot's commands).
+        Every run writes a JSON report to <code>testbed/bots/reports/</code> (gitignored); a failure prints the
+        bot's last 20 chat lines.
+      </p>
+      <p>
+        Helpers: <code>./testbed/scripts/gatekeep-profile.sh strict|default</code> copies the strict overlay
+        (<code>plugin-config/velocity/gatekeep-strict/config.yml</code>) into the running Velocity container; apply it with
+        <code>/gatekeep reload</code> as staff.
+      </p>
+    </section>
+
+    <section id="aegis">
+      <h2>aegis <span class="tag">Velocity + Paper</span></h2>
+      <p>Bans, mutes and warnings with a SQL audit trail. Run staff commands on Velocity (network truth); Paper enforces mute chat and shows the history chest.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Permission</th><th>Expected output / effect</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/aegis</code></td><td><code>aegis.use</code></td><td><code>[aegis] Help (1/2)</code> with the subcommands below.</td></tr>
+          <tr><td><code>/aegis ban &lt;player&gt; [dur] &lt;reason&gt;</code></td><td><code>aegis.ban</code></td><td><code>BAN applied to &lt;player&gt;</code> with <code>[Unban] [History] [Copy ID]</code>. The target is disconnected and cannot rejoin. Permanent bans ask for a click confirm.</td></tr>
+          <tr><td><code>/aegis unban &lt;player&gt;</code></td><td><code>aegis.unban</code></td><td><code>Revoked</code></td></tr>
+          <tr><td><code>/aegis mute &lt;player&gt; [dur] &lt;reason&gt;</code></td><td><code>aegis.mute</code></td><td><code>MUTE applied to &lt;player&gt;</code>. The muted player's chat is blocked and they see <code>You are muted: &lt;reason&gt;</code>.</td></tr>
+          <tr><td><code>/aegis unmute &lt;player&gt;</code></td><td><code>aegis.unmute</code></td><td><code>Revoked</code></td></tr>
+          <tr><td><code>/aegis warn &lt;player&gt; &lt;reason&gt;</code></td><td><code>aegis.warn</code></td><td><code>WARN applied to &lt;player&gt;</code>.</td></tr>
+          <tr><td><code>/aegis history &lt;player&gt; [page]</code></td><td><code>aegis.history</code></td><td>Punishment lines with <code>[active]</code> or <code>[inactive]</code>.</td></tr>
+          <tr><td><code>/aegis check &lt;player&gt;</code></td><td><code>aegis.history</code></td><td><code>Active for &lt;player&gt;:</code> or <code>No active punishment</code>.</td></tr>
+          <tr><td><code>/aegis reason &lt;id&gt;</code>, <code>rollback &lt;id&gt;</code>, <code>lookup &lt;uuid|name&gt;</code>, <code>reload</code></td><td><code>aegis.history</code>, <code>aegis.unban</code> or <code>aegis.unmute</code>, <code>aegis.reload</code></td><td>Audit row detail, revoke by audit id, resolve with copy buttons, soft reload.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Aliases (config toggled): <code>/gban</code>, <code>/gmute</code>, <code>/gunban</code>, <code>/gwarn</code>,
+        <code>/hist</code>, <code>/checkpunish</code>. Each staff member has a punish cooldown of 1500 ms
+        (<code>Slow down (1s)</code>); durations are <code>10m</code>, <code>1h</code>, <code>1d</code>, <code>7d</code>, <code>30d</code>, <code>perm</code>.
+      </p>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>Two clients (or a client and a bot). As staff: <code>/aegis ban Bot2 5m testing</code>.</li>
+        <li>Confirm Bot2 is kicked and cannot reconnect; <code>/aegis unban Bot2</code> and reconnect.</li>
+        <li><code>/aegis mute Bot2 10m spam</code>, chat as Bot2, expect the muted notice; <code>/aegis unmute Bot2</code>.</li>
+      </ol>
+    </section>
+
+    <section id="harbor">
+      <h2>harbor <span class="tag">Velocity</span></h2>
+      <p>Priority queues and backend health routing when a server is unhealthy, full or paused.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Who</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/harbor</code>, <code>/queue</code></td><td>anyone</td><td>Status of the default server plus help.</td></tr>
+          <tr><td><code>/harbor status [server]</code></td><td>anyone</td><td><code>hub . healthy . queue 0 . you not queued [Leave] [Refresh]</code></td></tr>
+          <tr><td><code>/harbor join &lt;server&gt;</code></td><td>player</td><td>Queued with a position, or connected at once when the backend is healthy.</td></tr>
+          <tr><td><code>/harbor leave</code></td><td>player</td><td>Leaves every queue.</td></tr>
+          <tr><td><code>/harbor list</code></td><td>anyone</td><td>One line per server: <code>minigame . healthy . queue 0</code></td></tr>
+          <tr><td><code>/harbor admin pause|resume|clear &lt;server&gt;</code></td><td><code>harbor.admin</code></td><td><code>Paused sends for minigame.</code>, <code>Resumed sends for minigame.</code>, <code>Cleared N from minigame.</code></td></tr>
+          <tr><td><code>/harbor admin kickqueue &lt;player&gt;</code>, <code>send &lt;player&gt; &lt;server&gt;</code>, <code>/harbor reload</code></td><td><code>harbor.admin</code></td><td>Remove from queue, bypass the queue, reload config.</td></tr>
+        </tbody>
+      </table>
+      <p>Priority nodes (config): <code>harbor.priority.vip</code> (10), <code>harbor.priority.staff</code> (50). Highest granted weight wins.</p>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>As staff: <code>/harbor admin pause minigame</code>.</li>
+        <li>As Bot2 then Bot3 (vip): <code>/harbor join minigame</code>; Bot3 should show <code>you #1 (priority 10)</code>.</li>
+        <li>Clear the queue and <code>/harbor admin resume minigame</code>.</li>
+      </ol>
+    </section>
+
+    <section id="gatekeep">
+      <h2>gatekeep <span class="tag">Velocity</span></h2>
+      <p>Login throttling by remote address, with a support code on the deny screen.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Permission</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/gatekeep</code>, <code>/gatekeep help</code></td><td><code>gatekeep.admin</code></td><td>Clickable help.</td></tr>
+          <tr><td><code>/gatekeep status</code></td><td><code>gatekeep.admin</code></td><td><code>Tracking N addresses, N denied since start. Limit 30 per 1 minute.</code> then the busiest addresses (<code>172.23.0.1 . 1/30</code>).</td></tr>
+          <tr><td><code>/gatekeep check &lt;ip&gt;</code></td><td><code>gatekeep.admin</code></td><td>Attempts, retry time and the support code (<code>GK-...</code>).</td></tr>
+          <tr><td><code>/gatekeep clear &lt;ip&gt;</code>, <code>clear *</code></td><td><code>gatekeep.admin</code></td><td>Forget one address, or all with a confirm.</td></tr>
+          <tr><td><code>/gatekeep reload</code></td><td><code>gatekeep.admin</code></td><td>Reload <code>config.yml</code> without resetting counters.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The testbed raises <code>max-attempts</code> to 30 so bots are not refused. To see a real denial, copy the
+        strict overlay (3 attempts per 60 seconds) with <code>./testbed/scripts/gatekeep-profile.sh strict</code>, run
+        <code>/gatekeep reload</code>, reconnect four times, then switch back with
+        <code>./testbed/scripts/gatekeep-profile.sh default</code> and reload. Bots all share one address, so keep a staff
+        session open to run <code>/gatekeep clear &lt;ip&gt;</code>.
+      </p>
+    </section>
+
+    <section id="loom">
+      <h2>loom <span class="tag">Paper, hub + minigame</span></h2>
+      <p>Cross-server inventory sync with a database lease. Both backends need the same jar and database.</p>
+      <table>
+        <thead>
+          <tr><th>Command / event</th><th>Permission</th><th>Expected output / effect</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Join or switch server</td><td>(passive)</td><td>Action bar <code>Restoring inventory...</code> then green <code>Inventory restored</code>. While another server holds the lease: boss bar <code>Waiting for sync lock N</code>.</td></tr>
+          <tr><td><code>/loom</code></td><td><code>loom.use</code></td><td>Players are told sync runs automatically; staff see help.</td></tr>
+          <tr><td><code>/loom status [player]</code></td><td><code>loom.admin</code></td><td><code>Bot1: saved 1m ago, lease held by port-25565, 240 bytes, version 1 [Copy UUID] [Inspect] [Unlock]</code></td></tr>
+          <tr><td><code>/loom inspect &lt;player&gt;</code></td><td><code>loom.admin</code></td><td>Read-only chest preview of the stored inventory (player only).</td></tr>
+          <tr><td><code>/loom force-save [player]</code>, <code>unlock &lt;player&gt;</code>, <code>reload</code></td><td><code>loom.admin</code></td><td>Save now and keep the lease, clear a stuck lease, reload timing and policy.</td></tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>On hub, <code>/give</code> yourself unique items.</li>
+        <li><code>/server minigame</code>; the restore action bar shows and the items match.</li>
+        <li>Switch back and forth quickly; expect the wait boss bar, no kick and no duplicates.</li>
+      </ol>
+    </section>
+
+    <section id="spotlight">
+      <h2>spotlight <span class="tag">Paper</span></h2>
+      <p>Lag attribution by loaded chunk: entities, hoppers, minecarts, redstone tiles, item frames and villagers.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Permission</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/spotlight</code>, alias <code>/lagscan</code></td><td><code>spotlight.scan</code></td><td><code>Last scan: never</code> plus help.</td></tr>
+          <tr><td><code>/spotlight scan [world] [limit]</code></td><td><code>spotlight.scan</code></td><td><code>Scanning 169 chunks (32/tick)...</code> then <code>Top 10 of 67 scored chunks</code> and <code>#1 world -1,-6 score=22 [Copy coords]</code>, plus <code>[Rescan] [Book view]</code>.</td></tr>
+          <tr><td><code>/spotlight here</code></td><td><code>spotlight.scan</code></td><td><code>Chunk -1,0 score=6 (2 entities x1 + 1 minecarts x4 = 6)</code>, also on the action bar.</td></tr>
+          <tr><td><code>/spotlight near [radius]</code>, <code>book</code></td><td><code>spotlight.scan</code></td><td>Hot chunks from the last scan, or a book of them.</td></tr>
+          <tr><td><code>/spotlight tp &lt;rank&gt;</code></td><td><code>spotlight.tp</code></td><td>Teleport to a ranked chunk.</td></tr>
+          <tr><td><code>/spotlight weights</code>, <code>reload</code></td><td><code>spotlight.admin</code></td><td><code>entities=1 hoppers=8 minecarts=4 redstone=2 item-frames=3 villagers=5</code></td></tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>Place a few hoppers in one chunk, run <code>/spotlight scan</code>, then <code>/spotlight here</code> inside it.</li>
+        <li>Click or run <code>/spotlight tp 1</code> to jump to the top chunk.</li>
+      </ol>
+    </section>
+
+    <section id="cull">
+      <h2>cull <span class="tag">Paper</span></h2>
+      <p>Per-chunk entity caps and cleanup. Hostiles go first, then the oldest; pets, named mobs, villagers and more are protected.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Permission</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/cull</code></td><td><code>cull.use</code></td><td><code>Max per chunk: 40. Next cleanup in 8s</code> plus help.</td></tr>
+          <tr><td><code>/cull status [world]</code></td><td><code>cull.use</code></td><td><code>Mode all, cancelled spawns 0, culled entities 0</code> and <code>world: cap 40, 169 loaded chunks, 0 over cap</code></td></tr>
+          <tr><td><code>/cull scan [world] [limit]</code></td><td><code>cull.use</code></td><td><code>Top 3 of 72 chunks with entities</code> then <code>#1 world -1,-6 22/40 [Copy coords]</code></td></tr>
+          <tr><td><code>/cull here</code>, <code>tp &lt;rank&gt;</code></td><td><code>cull.use</code></td><td><code>Chunk -1,0: 2/40 (CHEST_MINECART x1, PLAYER x1)</code>; teleport to a scanned chunk.</td></tr>
+          <tr><td><code>/cull run</code>, <code>reload</code></td><td><code>cull.admin</code></td><td><code>Cleanup removed N entities</code>; reload <code>config.yml</code>.</td></tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li>Summon a dozen chickens in one chunk, set <code>max-entities-per-chunk: 5</code> in the plugin config, <code>/cull reload</code>.</li>
+        <li><code>/cull status world</code> shows a chunk over cap; <code>/cull run</code> brings it to 5 or fewer.</li>
+      </ol>
+    </section>
+
+    <section id="ledger">
+      <h2>ledger <span class="tag">Paper</span></h2>
+      <p>SQL economy with a transaction log, receipts and clickable chat. Vault is a soft dependency.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Permission</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/bal [player]</code>, <code>/balance</code>, <code>/money</code></td><td><code>ledger.use</code></td><td><code>Balance: 100.00 Credits [Pay] [History]</code></td></tr>
+          <tr><td><code>/pay &lt;player&gt; &lt;amount&gt; [reason]</code></td><td><code>ledger.use</code></td><td><code>Paid 25.00 Credits to Bot2 [Copy receipt]</code>. The receiver sees <code>+25 Credits from Bot1</code> on the action bar. Amounts of 500 or more ask <code>[Confirm pay ...] [Cancel]</code>. Short balance: <code>Insufficient funds</code>.</td></tr>
+          <tr><td><code>/baltop [n]</code>, <code>/ledger top [n]</code></td><td><code>ledger.use</code></td><td><code>Top 10 balances</code> then numbered rows.</td></tr>
+          <tr><td><code>/ledger history [player] [page]</code></td><td><code>ledger.use</code> (own), <code>ledger.admin</code> or <code>ledger.audit</code> (others)</td><td><code>History for Bot1, page 1</code> then <code>#26 1,000.00 Credits bank [Copy]</code></td></tr>
+          <tr><td><code>/ledger receipt &lt;id&gt;</code></td><td><code>ledger.use</code> (own), <code>ledger.admin</code> or <code>ledger.audit</code> (any)</td><td><code>Receipt #26 1,000.00 Credits bank (2026-10-12 01:53 UTC) [Copy id]</code></td></tr>
+          <tr><td><code>/ledger give|take|set &lt;player&gt; &lt;amount&gt; [reason]</code></td><td><code>ledger.admin</code></td><td><code>Gave 100.00 Credits to Bot1 [Copy receipt]</code>, <code>Took 5.00 Credits from Bot2</code>, or <code>Bot2 has less than 99,999.00 Credits</code>. Players confirm <code>set</code> by click; the console runs it directly. Others get <code>No permission</code>.</td></tr>
+          <tr><td><code>/ledger reload</code></td><td><code>ledger.admin</code></td><td>Reload currency name, max amount and confirm threshold.</td></tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li><code>/ledger give Bot1 100 prize</code> as op, then <code>/bal</code>.</li>
+        <li><code>/pay Bot2 25 thanks</code>; check Bot2's action bar and <code>/ledger history</code>.</li>
+      </ol>
+    </section>
+
+    <section id="amber">
+      <h2>amber <span class="tag">Paper</span></h2>
+      <p>World snapshots with a boss bar, retention and a confirmed restore. Every subcommand needs <code>amber.admin</code> (and <code>amber.use</code> for the root).</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/amber</code></td><td>Help and <code>Snapshot disk used: 8.7 MiB</code></td></tr>
+          <tr><td><code>/amber snapshot [world] [label]</code></td><td><code>Snapshot saved: 20261012-015501-699-world-botprobe (10.3 MiB) [Copy filename] [List]</code></td></tr>
+          <tr><td><code>/amber list [world]</code></td><td><code>Snapshots (2), newest first</code> then rows with <code>[Copy filename] [Restore] [Delete]</code></td></tr>
+          <tr><td><code>/amber info &lt;file&gt;</code></td><td>File, World, Label, Size and Created lines. <code>../x</code> gives <code>Unsafe snapshot name</code>.</td></tr>
+          <tr><td><code>/amber restore &lt;file&gt; [world]</code></td><td>Prompt to type the world name back; then a confirm button. Safety snapshot first. The main world cannot be restored while running.</td></tr>
+          <tr><td><code>/amber delete &lt;file&gt;</code>, <code>prune</code>, <code>cancel</code>, <code>reload</code></td><td>Delete asks to confirm; <code>Retention applied: keeping the newest 5</code>; <code>No snapshot is running</code>.</td></tr>
+        </tbody>
+      </table>
+      <h3>Manual test plan</h3>
+      <ol>
+        <li><code>/amber snapshot world before-build</code>, <code>/amber list</code>, <code>/amber info &lt;file&gt;</code>.</li>
+        <li>Restore on a non-main world only; the main world needs a manual stop and copy.</li>
+      </ol>
+    </section>
+
+    <section id="tether">
+      <h2>tether <span class="tag">Paper</span></h2>
+      <p>Discord account linking and an optional chat bridge. Needs a bot token in <code>testbed/.env</code>.</p>
+      <table>
+        <thead>
+          <tr><th>Command / flow</th><th>Permission</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/tether</code>, <code>help [page]</code></td><td>none</td><td>Help, bridge status (<code>Discord bridge: connected</code>) and whether you are linked.</td></tr>
+          <tr><td><code>/tether link</code>, <code>/link</code></td><td><code>tether.link</code></td><td><code>Your link code expires in 5:00</code>, the code, <code>[Copy code] [Cancel code]</code>, then <code>In Discord, send !link CODE</code>.</td></tr>
+          <tr><td><code>/tether link renew</code>, <code>cancel</code></td><td><code>tether.link</code></td><td>New code; <code>Link code cancelled.</code></td></tr>
+          <tr><td><code>/tether status</code>, <code>/discord</code></td><td><code>tether.link</code></td><td><code>You are not linked. Run /tether link</code> or the linked tag.</td></tr>
+          <tr><td><code>/tether unlink</code></td><td><code>tether.link</code></td><td><code>You are not linked.</code> or a Confirm/Cancel prompt.</td></tr>
+          <tr><td><code>/tether admin lookup|unlink|codes</code>, <code>reload</code></td><td><code>tether.admin.*</code></td><td>Link lookup, force unlink, <code>Pending codes: N</code> (codes are never shown).</td></tr>
+          <tr><td>Discord <code>!link CODE</code> or <code>/link code:CODE</code></td><td>(Discord)</td><td>Discord replies and the in-game card becomes <code>Linked as @User</code>.</td></tr>
+        </tbody>
+      </table>
+      <p>The bot suite only runs the in-game half, and only with <code>TETHER_LIVE=1</code>. Linking from Discord is a manual check.</p>
+    </section>
+
+    <section id="cairn">
+      <h2>cairn <span class="tag">Fabric server</span></h2>
+      <p>
+        Death graves for vanilla clients. Runs on the optional Fabric backend
+        (<code>/server cairn</code>). Loot is virtual; the world marker is a barrel.
+        Only the matching grave key (or a level-2 admin) can open it.
+      </p>
+      <pre><code>./testbed/scripts/sync-plugins.sh
+docker compose -f testbed/docker-compose.yml --profile fabric up -d
+# in game: /server cairn   (survival world)   and /server hub to return</code></pre>
+      <table>
+        <thead>
+          <tr><th>Command / behavior</th><th>Who</th><th>Expected output</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Player death</td><td>(passive)</td><td><code>Your grave was placed at 82 69 -13 in minecraft:overworld [Copy coords]</code> (admins also see <code>[Tp]</code>). Inventory leaves the player. On respawn you get a transferable grave key. Fabric forces the pack from the docs host (<code>testbed/site/resourcepacks/cairn-resourcepack.zip</code>) for custom models.</td></tr>
+          <tr><td>Right-click marker</td><td>key holder / admin</td><td>Hold the matching key (main or off hand) and right-click the barrel to open the virtual chest. Without the key: <code>Hold the matching grave key to open this</code>.</td></tr>
+          <tr><td><code>/cairn</code></td><td>anyone</td><td>One-line help.</td></tr>
+          <tr><td><code>/cairn locate</code>, <code>list</code></td><td>players</td><td><code>#1 82 69 -13 in minecraft:overworld, 14m left [Copy coords]</code></td></tr>
+          <tr><td><code>/cairn admin list [player]</code>, <code>tp &lt;id&gt;</code>, <code>key &lt;id&gt;</code>, <code>expire &lt;id&gt;</code>, <code>clear &lt;id|expired|all&gt;</code></td><td>level 2</td><td>Owner column in the list, teleport, reissue a key, expire now, remove and drop items. <code>clear</code> leaves <code>You have no active graves</code> for the owner.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        FabricProxy-Lite shares the Velocity forwarding secret. ViaFabric and ViaBackwards let the
+        26.1 bots join. Bots can die and read chat but cannot right-click a grave, so opening with a key is manual.
+      </p>
+    </section>
+
+    <section id="velocity">
+      <h2>Velocity built-ins</h2>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Expected use</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/server hub</code>, <code>/server minigame</code>, <code>/server cairn</code></td><td>Switch backends; <code>cairn</code> needs the fabric profile.</td></tr>
+          <tr><td><code>/server</code></td><td>Lists available servers.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <p>nubstack local docs. Served from the <code>docs</code> Compose service on port 8080.</p>
+  </footer>
+</body>
+</html>

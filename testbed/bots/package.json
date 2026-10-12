@@ -1,0 +1,22 @@
+{
+  "name": "nubstack-bots",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke": "node smoke.mjs",
+    "test:ledger": "node lib/runner.mjs ledger",
+    "test:spotlight": "node lib/runner.mjs spotlight",
+    "test:cull": "node lib/runner.mjs cull",
+    "test:amber": "node lib/runner.mjs amber",
+    "test:tether": "node lib/runner.mjs tether",
+    "test:aegis": "node lib/runner.mjs aegis",
+    "test:loom": "node lib/runner.mjs loom",
+    "test:harbor": "node lib/runner.mjs harbor",
+    "test:gatekeep": "node lib/runner.mjs gatekeep",
+    "test:cairn": "node lib/runner.mjs cairn",
+    "test:all": "node lib/runner.mjs all"
+  },
+  "dependencies": {
+    "mineflayer": "^4.33.0"
+  }
+}
